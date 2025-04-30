@@ -9,6 +9,9 @@ import { Award, Clock, BookOpen } from "lucide-react";
 import CourseCard from "@/components/dashboard/CourseCard";
 import CourseProgress from "@/components/dashboard/CourseProgress";
 import { toast } from "sonner";
+import { Drawer, DrawerTrigger, DrawerContent, DrawerHeader, DrawerTitle, DrawerClose } from "@/components/ui/drawer";
+import GeneralChatbot from "@/components/course/GeneralChatbot";
+import { decodeJWT } from "@/utils/auth";
 
 interface Course {
   id: string;
@@ -24,6 +27,11 @@ interface UserProfile {
   email: string;
 }
 
+interface CourseProgress {
+  courseId: string;
+  progress: number;
+}
+
 const UserDashboard = () => {
   const [activeTab, setActiveTab] = useState<"all" | "inProgress" | "completed">("all");
   const [courses, setCourses] = useState<Course[]>([]);
@@ -32,6 +40,7 @@ const UserDashboard = () => {
   const [searchParams] = useSearchParams();
   const tenantId = searchParams.get('tenantId');
   const token = searchParams.get('token');
+  const [courseProgress, setCourseProgress] = useState<Record<string, number>>({});
 
   // Store tenantId in localStorage when it's available
   useEffect(() => {
@@ -41,89 +50,116 @@ const UserDashboard = () => {
     }
   }, [tenantId]);
 
-  // Fetch user profile
+  // Fetch user profile and course progress
   useEffect(() => {
-    const fetchUserProfile = async () => {
+    const fetchData = async () => {
       if (!token) {
         console.error('No token available');
         return;
       }
 
       try {
-        const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/user-dashboard/profile`, {
+        // Decode JWT to get user ID
+        const decodedToken = decodeJWT(token);
+        console.log('Decoded token:', decodedToken);
+        
+        // Try different possible fields for user ID
+        const userId = decodedToken?.sub || decodedToken?.userId || decodedToken?.id;
+        if (!userId) {
+          console.error('Token structure:', decodedToken);
+          throw new Error('User ID not found in token');
+        }
+
+        // Fetch user profile
+        const profileResponse = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/user-dashboard/profile`, {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
           }
         });
 
-        if (!response.ok) {
+        if (!profileResponse.ok) {
           throw new Error('Failed to fetch user profile');
         }
 
-        const data = await response.json();
-        setUserProfile(data);
-        console.log('Fetched user profile:', data);
-      } catch (error) {
-        console.error('Error fetching user profile:', error);
-        toast.error('Failed to load user profile');
-      }
-    };
+        const profileData = await profileResponse.json();
+        setUserProfile(profileData);
+        if (profileData?.name) {
+          localStorage.setItem('userName', profileData.name);
+        }
 
-    fetchUserProfile();
-  }, [token]);
-
-  useEffect(() => {
-    const fetchCourses = async () => {
-      if (!tenantId || !token) {
-        toast.error("Missing tenant ID or token");
-        return;
-      }
-
-      try {
-        const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/tenant-admin/tenants/${tenantId}/courses`, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
+        // Fetch courses
+        const coursesResponse = await fetch(
+          `${import.meta.env.VITE_BACKEND_URL}/api/tenant-admin/tenants/${tenantId}/courses`,
+          {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            }
           }
-        });
+        );
 
-        if (!response.ok) {
+        if (!coursesResponse.ok) {
           throw new Error('Failed to fetch courses');
         }
 
-        const data = await response.json();
-        // Transform the API response to match our Course interface
-        const transformedCourses = data.map((course: any) => ({
-          id: course.id,
-          title: course.title,
-          description: course.description,
-          duration: course.duration || "1 hour", // Default duration if not provided
-          progress: course.progress || 0 // Default progress if not provided
-        }));
+        const coursesData = await coursesResponse.json();
+        setCourses(coursesData);
 
-        setCourses(transformedCourses);
+        // Fetch progress for each course
+        const progressPromises = coursesData.map(async (course: Course) => {
+          const progressResponse = await fetch(
+            `${import.meta.env.VITE_BACKEND_URL}/api/courses/progress/user?userId=${userId}&courseId=${course.id}`,
+            {
+              headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+              }
+            }
+          );
+
+          if (!progressResponse.ok) {
+            return { courseId: course.id, progress: 0 };
+          }
+
+          const progressData = await progressResponse.json();
+          return { courseId: course.id, progress: progressData.progress || 0 };
+        });
+
+        const progressResults = await Promise.all(progressPromises);
+        const progressMap = progressResults.reduce((acc, curr) => {
+          acc[curr.courseId] = curr.progress;
+          return acc;
+        }, {} as Record<string, number>);
+
+        setCourseProgress(progressMap);
+        setIsLoading(false);
       } catch (error) {
-        console.error('Error fetching courses:', error);
-        toast.error('Failed to load courses');
-      } finally {
+        console.error('Error fetching data:', error);
+        toast.error('Failed to load data');
         setIsLoading(false);
       }
     };
 
-    fetchCourses();
-  }, [tenantId, token]);
+    fetchData();
+  }, [token, tenantId]);
 
+  // Calculate overall progress and completed courses
+  const totalProgress = Object.values(courseProgress).reduce((sum, progress) => sum + progress, 0);
+  const overallProgress = Object.keys(courseProgress).length > 0 
+    ? Math.round(totalProgress / Object.keys(courseProgress).length) 
+    : 0;
+  
+  const completedCourses = Object.values(courseProgress).filter(progress => progress === 100).length;
+
+  // Filter courses based on active tab
   const filteredCourses = courses.filter(course => {
+    const progress = courseProgress[course.id] || 0;
     if (activeTab === "all") return true;
-    if (activeTab === "inProgress") return course.progress > 0 && course.progress < 100;
-    if (activeTab === "completed") return course.progress === 100;
+    if (activeTab === "inProgress") return progress > 0 && progress < 100;
+    if (activeTab === "completed") return progress === 100;
     return true;
   });
-
-  const totalProgress = courses.reduce((acc, course) => acc + course.progress, 0);
-  const overallProgress = courses.length > 0 ? Math.round(totalProgress / courses.length) : 0;
-  const completedCourses = courses.filter(course => course.progress === 100).length;
 
   if (isLoading) {
     return (
@@ -144,6 +180,27 @@ const UserDashboard = () => {
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-background to-muted/30">
       <Navbar userRole="employee" />
+      {/* Chat Drawer Trigger */}
+      <Drawer>
+        <DrawerTrigger asChild>
+          <button
+            className="fixed bottom-8 right-8 z-50 bg-complybrand-700 hover:bg-complybrand-800 text-white rounded-full shadow-lg p-4 flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-complybrand-700"
+            aria-label="Open Chatbot"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M21 12c0 4.418-4.03 8-9 8a9.77 9.77 0 01-4-.8L3 20l.8-3.2A7.96 7.96 0 013 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
+          </button>
+        </DrawerTrigger>
+        <DrawerContent className="max-w-lg mx-auto w-full">
+          <DrawerHeader>
+            <DrawerTitle>General Chatbot</DrawerTitle>
+            <DrawerClose className="absolute right-4 top-4 text-gray-400 hover:text-gray-600">✕</DrawerClose>
+          </DrawerHeader>
+          <div className="p-2 pb-8">
+            <GeneralChatbot tenantId={tenantId || ''} />
+          </div>
+        </DrawerContent>
+      </Drawer>
+      {/* End Chat Drawer */}
       <main className="flex-grow pt-16">
         <div className="container mx-auto px-4 py-8">
           <div className="flex flex-col lg:flex-row gap-8">
@@ -187,9 +244,9 @@ const UserDashboard = () => {
                     <div className="flex justify-between items-center hover:bg-muted/20 p-2 rounded-md transition-colors">
                       <div className="flex items-center">
                         <Clock className="h-4 w-4 mr-2 text-gray-500" />
-                        <span className="text-sm">Due Soon</span>
+                        <span className="text-sm">In Progress</span>
                       </div>
-                      <span className="font-medium">0</span>
+                      <span className="font-medium">{courses.length - completedCourses}</span>
                     </div>
                   </div>
                 </CardContent>
@@ -226,17 +283,26 @@ const UserDashboard = () => {
               
               {filteredCourses.length > 0 ? (
                 <div className="grid gap-6 md:grid-cols-2">
-                  {filteredCourses.map((course) => (
-                    <CourseCard
-                      key={course.id}
-                      id={course.id}
-                      title={course.title}
-                      description={course.description}
-                      duration={course.duration}
-                      progress={course.progress}
-                      userRole="employee"
-                    />
-                  ))}
+                  {filteredCourses.map((course) => {
+                    const progress = courseProgress[course.id] || 0;
+                    const isCompleted = progress === 100;
+                    const isInProgress = progress > 0 && progress < 100;
+                    
+                    return (
+                      <CourseCard
+                        key={course.id}
+                        id={course.id}
+                        title={course.title}
+                        description={course.description}
+                        duration={course.duration}
+                        progress={progress}
+                        userRole="employee"
+                        tenantId={tenantId || ''}
+                        token={token || ''}
+                        className={isCompleted ? "bg-green-10" : isInProgress ? "bg-yellow-10" : ""}
+                      />
+                    );
+                  })}
                 </div>
               ) : (
                 <Card className="animate-fade-in overflow-hidden bg-card/50 backdrop-blur-sm border border-border/50">

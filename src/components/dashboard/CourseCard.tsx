@@ -12,6 +12,10 @@ interface CourseCardProps {
   enrolledCount?: number;
   progress?: number;
   userRole: "superuser" | "admin" | "employee";
+  actionButton?: React.ReactNode;
+  tenantId: string;
+  token: string;
+  className?: string;
 }
 
 const CourseCard = ({ 
@@ -21,10 +25,14 @@ const CourseCard = ({
   duration, 
   enrolledCount, 
   progress = 0,
-  userRole 
+  userRole,
+  actionButton,
+  tenantId,
+  token,
+  className = ""
 }: CourseCardProps) => {
   return (
-    <Card className="overflow-hidden hover:shadow-lg transition-shadow">
+    <Card className={`overflow-hidden hover:shadow-lg transition-shadow ${className}`}>
       <CardHeader className="bg-complybrand-50 border-b border-gray-100">
         <CardTitle className="text-complybrand-800">{title}</CardTitle>
         <CardDescription>{description}</CardDescription>
@@ -62,7 +70,7 @@ const CourseCard = ({
         </Link>
         
         {userRole === "employee" && (
-          <Link to={`/dashboard/course/${id}/play`}>
+          <Link to={`/dashboard/course/${id}/play?tenantId=${tenantId}&token=${token}&progress=${progress}`}>
             <Button className="bg-complybrand-700 hover:bg-complybrand-800">
               <Book className="mr-2 h-4 w-4" />
               {progress > 0 ? "Resume Course" : "Start Course"}

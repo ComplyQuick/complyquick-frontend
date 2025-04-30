@@ -20,14 +20,14 @@ const Testimonials = () => {
       name: "Sarah Johnson",
       role: "HR Director",
       company: "Global Finance Inc.",
-      content: "CompliQuick has transformed our compliance training program. We've seen a 40% increase in completion rates and our employees actually enjoy the training now!",
+      content: "ComplyQuick has transformed our compliance training program. We've seen a 40% increase in completion rates and our employees actually enjoy the training now!",
       image: "https://images.unsplash.com/photo-1580489944761-15a19d654956?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8N3x8YXZhdGFyfGVufDB8fDB8fHww",
     },
     {
       name: "Michael Chen",
       role: "Compliance Officer",
       company: "Tech Solutions LLC",
-      content: "The analytics provided by CompliQuick give me real-time insights into our compliance posture. It's incredibly powerful and easy to use.",
+      content: "The analytics provided by ComplyQuick give me real-time insights into our compliance posture. It's incredibly powerful and easy to use.",
       image: "https://images.unsplash.com/photo-1531427186611-ecfd6d936c79?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MjB8fGF2YXRhcnxlbnwwfHwwfHx8MA%3D%3D",
     },
     {
@@ -79,7 +79,7 @@ const Testimonials = () => {
             transition={{ duration: 0.5, delay: 0.3 }}
             className="mt-4 max-w-2xl text-xl text-gray-500 dark:text-gray-400 lg:mx-auto"
           >
-            See what our customers have to say about their experience with CompliQuick.
+            See what our customers have to say about their experience with ComplyQuick.
           </motion.p>
         </motion.div>
 

@@ -7,7 +7,8 @@ import {
   Volume2, 
   VolumeX,
   Subtitles,
-  Captions
+  Captions,
+  Check
 } from "lucide-react";
 import { Slider } from "@/components/ui/slider";
 import { toast } from "sonner";
@@ -30,6 +31,9 @@ interface SlideControlsProps {
   showSubtitles: boolean;
   toggleSubtitles: () => void;
   canAdvance: boolean;
+  progress: number;
+  setProgress: (progress: number) => void;
+  setCanAdvance: (canAdvance: boolean) => void;
 }
 
 const SlideControls: React.FC<SlideControlsProps> = ({
@@ -48,29 +52,41 @@ const SlideControls: React.FC<SlideControlsProps> = ({
   onComplete,
   showSubtitles,
   toggleSubtitles,
-  canAdvance
+  canAdvance,
+  progress,
+  setProgress,
+  setCanAdvance
 }) => {
   const handleNextClick = () => {
-    if (!canAdvance) {
-      toast.info("Please watch more of this slide before moving to the next one");
+    if (!canAdvance && progress < 80) {
+      toast.info("Please complete at least 80% of this slide before moving to the next one");
       return;
     }
+    
     handleNext();
+    
+    // Reset progress for next slide
+    setProgress(0);
+    setCanAdvance(false);
   };
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+    <div className="flex flex-col space-y-4">
+      <div className="flex items-center justify-between">
         <div className="flex items-center space-x-2">
-          <Button variant="outline" size="icon" onClick={handlePrev} disabled={isFirstSlide}
-            className="border border-pink-100/50 dark:border-purple-900/30 hover:bg-pink-50 dark:hover:bg-purple-900/30">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handlePrev}
+            disabled={isFirstSlide}
+          >
             <SkipBack className="h-4 w-4" />
           </Button>
-          <Button 
-            variant="outline" 
-            size="icon" 
+
+          <Button
+            variant="ghost"
+            size="icon"
             onClick={togglePlayback}
-            className="border border-pink-100/50 dark:border-purple-900/30 hover:bg-pink-50 dark:hover:bg-purple-900/30"
           >
             {isPlaying ? (
               <Pause className="h-4 w-4" />
@@ -78,111 +94,71 @@ const SlideControls: React.FC<SlideControlsProps> = ({
               <Play className="h-4 w-4" />
             )}
           </Button>
-          <Button 
-            variant="outline" 
+
+          <Button
+            variant="ghost"
             size="icon"
             onClick={handleNextClick}
             disabled={!canAdvance}
-            className="border border-pink-100/50 dark:border-purple-900/30 hover:bg-pink-50 dark:hover:bg-purple-900/30"
           >
             <SkipForward className="h-4 w-4" />
           </Button>
-          
-          <Button 
-            variant="outline" 
+
+          <div className="flex items-center space-x-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={toggleMute}
+            >
+              {isMuted ? (
+                <VolumeX className="h-4 w-4" />
+              ) : (
+                <Volume2 className="h-4 w-4" />
+              )}
+            </Button>
+            <div className="w-24">
+              <Slider
+                value={[volume]}
+                min={0}
+                max={100}
+                step={1}
+                onValueChange={handleVolumeChange}
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="flex items-center space-x-2">
+          <select
+            value={playbackRate}
+            onChange={(e) => changePlaybackRate(Number(e.target.value))}
+            className="bg-transparent border rounded px-2 py-1 text-sm"
+          >
+            <option value={0.5}>0.5x</option>
+            <option value={1}>1x</option>
+            <option value={1.5}>1.5x</option>
+            <option value={2}>2x</option>
+          </select>
+
+          <Button
+            variant="ghost"
             size="icon"
             onClick={toggleSubtitles}
-            className="border border-pink-100/50 dark:border-purple-900/30 hover:bg-pink-50 dark:hover:bg-purple-900/30 ml-2"
           >
-            {showSubtitles ? (
-              <Subtitles className="h-4 w-4" />
-            ) : (
-              <Captions className="h-4 w-4" />
-            )}
+            <Subtitles className={`h-4 w-4 ${showSubtitles ? 'text-blue-500' : ''}`} />
           </Button>
+
+          {isLastSlide && progress >= 100 && (
+            <Button
+              variant="default"
+              onClick={onComplete}
+              className="ml-2"
+            >
+              <Check className="h-4 w-4 mr-2" />
+              Complete
+            </Button>
+          )}
         </div>
-        
-        <div className="flex flex-wrap items-center justify-center gap-1">
-          <Button 
-            variant={playbackRate === 0.5 ? "secondary" : "ghost"} 
-            size="sm" 
-            onClick={() => changePlaybackRate(0.5)}
-            className={playbackRate === 0.5 ? "bg-pink-100 dark:bg-purple-900/50" : ""}
-          >
-            0.5x
-          </Button>
-          <Button 
-            variant={playbackRate === 1 ? "secondary" : "ghost"} 
-            size="sm" 
-            onClick={() => changePlaybackRate(1)} 
-            className={playbackRate === 1 ? "bg-pink-100 dark:bg-purple-900/50" : ""}
-          >
-            1x
-          </Button>
-          <Button 
-            variant={playbackRate === 1.5 ? "secondary" : "ghost"} 
-            size="sm" 
-            onClick={() => changePlaybackRate(1.5)} 
-            className={playbackRate === 1.5 ? "bg-pink-100 dark:bg-purple-900/50" : ""}
-          >
-            1.5x
-          </Button>
-          <Button 
-            variant={playbackRate === 2 ? "secondary" : "ghost"} 
-            size="sm" 
-            onClick={() => changePlaybackRate(2)} 
-            className={playbackRate === 2 ? "bg-pink-100 dark:bg-purple-900/50" : ""}
-          >
-            2x
-          </Button>
-        </div>
-        
-        <div className="flex items-center space-x-2 w-32">
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            onClick={toggleMute}
-          >
-            {isMuted ? (
-              <VolumeX className="h-4 w-4" />
-            ) : (
-              <Volume2 className="h-4 w-4" />
-            )}
-          </Button>
-          <Slider
-            value={[isMuted ? 0 : volume]}
-            max={100}
-            step={1}
-            className="w-24"
-            onValueChange={handleVolumeChange}
-          />
-        </div>
-      </div>
-      
-      <div className="flex justify-between">
-        <Button 
-          variant="outline" 
-          onClick={handlePrev} 
-          disabled={isFirstSlide}
-          className="border-pink-200 dark:border-purple-900/30"
-        >
-          Previous Slide
-        </Button>
-        
-        <motion.div
-          whileHover={{ scale: canAdvance ? 1.05 : 1 }}
-          whileTap={{ scale: canAdvance ? 0.95 : 1 }}
-        >
-          <Button 
-            onClick={isLastSlide ? onComplete : handleNextClick}
-            disabled={!canAdvance}
-            className={`bg-gradient-to-r ${canAdvance ? 
-              'from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700' : 
-              'from-gray-400 to-gray-500'} text-white shadow-md`}
-          >
-            {isLastSlide ? "Complete Course" : "Next Slide"}
-          </Button>
-        </motion.div>
       </div>
     </div>
   );

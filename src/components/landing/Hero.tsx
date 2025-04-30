@@ -55,7 +55,7 @@ const Hero = () => {
                 transition={{ duration: 0.7, delay: 0.6 }}
                 className="mt-3 text-base text-gray-100 dark:text-gray-200 sm:mt-5 sm:text-xl lg:text-lg xl:text-xl"
               >
-                CompliQuick helps organizations deliver effective compliance training that employees actually complete. Our platform streamlines the entire compliance training process.
+                ComplyQuick helps organizations deliver effective compliance training that employees actually complete. Our platform streamlines the entire compliance training process.
               </motion.p>
               <motion.div 
                 initial={{ opacity: 0, y: 20 }}

@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
+import { Lightbulb } from 'lucide-react';
 
 interface MCQ {
   question: string;
@@ -15,12 +16,15 @@ interface MCQ {
     d: string;
   };
   correctAnswer: string;
+  hint: string;
 }
 
 const Quiz = () => {
   const [mcqs, setMcqs] = useState<MCQ[]>([]);
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [answers, setAnswers] = useState<Record<number, string>>({});
+  const [hintsUsed, setHintsUsed] = useState<Record<number, boolean>>({});
+  const [showHint, setShowHint] = useState(false);
   const navigate = useNavigate();
   const { courseId } = useParams();
 
@@ -46,17 +50,31 @@ const Quiz = () => {
       console.log('Current answers:', newAnswers);
       return newAnswers;
     });
+    setShowHint(false);
+  };
+
+  const handleShowHint = () => {
+    if (!hintsUsed[currentQuestion]) {
+      setHintsUsed(prev => ({
+        ...prev,
+        [currentQuestion]: true
+      }));
+      setShowHint(true);
+      toast.warning('Hint used! 5 marks will be deducted for this question.');
+    }
   };
 
   const handleNext = () => {
     if (currentQuestion < mcqs.length - 1) {
       setCurrentQuestion(prev => prev + 1);
+      setShowHint(false);
     }
   };
 
   const handlePrevious = () => {
     if (currentQuestion > 0) {
       setCurrentQuestion(prev => prev - 1);
+      setShowHint(false);
     }
   };
 
@@ -71,13 +89,19 @@ const Quiz = () => {
       console.log('Submitting quiz with answers:', answers);
       console.log('Total MCQs:', mcqs.length);
 
-      // Calculate results
+      // Calculate results with hint penalty
       const results = mcqs.map((question, index) => {
+        const isCorrect = answers[index] === question.correctAnswer;
+        const usedHint = hintsUsed[index] || false;
+        const score = isCorrect ? (usedHint ? 5 : 10) : 0;
+        
         const result = {
           question: question.question,
           userAnswer: answers[index] || 'Not answered',
           correctAnswer: question.correctAnswer,
-          isCorrect: answers[index] === question.correctAnswer
+          isCorrect,
+          usedHint,
+          score
         };
         console.log(`Question ${index + 1} result:`, result);
         return result;
@@ -144,6 +168,23 @@ const Quiz = () => {
                 </div>
               ))}
             </RadioGroup>
+
+            {showHint && (
+              <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-md">
+                <p className="text-yellow-800">{currentMcq.hint}</p>
+              </div>
+            )}
+
+            {!showHint && !hintsUsed[currentQuestion] && (
+              <Button
+                variant="outline"
+                className="mt-4"
+                onClick={handleShowHint}
+              >
+                <Lightbulb className="h-4 w-4 mr-2" />
+                Show Hint (-3 marks)
+              </Button>
+            )}
           </div>
         </div>
 

@@ -23,11 +23,11 @@ const AdminDashboard = () => {
   const [courses, setCourses] = useState([]);
   const [availableCourses, setAvailableCourses] = useState([]);
   const [selectedCourses, setSelectedCourses] = useState([]);
-  const [tenantId, setTenantId] = useState(() => {
+  const [tenantId, setTenantId] = useState<string | null>(() => {
     const storedTenantId = localStorage.getItem('tenantId');
     if (!storedTenantId) {
       console.error('No tenant ID found in localStorage');
-      return '';
+      return null;
     }
     return storedTenantId;
   });
@@ -38,6 +38,17 @@ const AdminDashboard = () => {
   const [selectedCourse, setSelectedCourse] = useState<any>(null);
   const [isGeneratingVideo, setIsGeneratingVideo] = useState(false);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    const storedTenantId = localStorage.getItem('tenantId');
+    if (!storedTenantId) {
+      console.error('No tenant ID found in localStorage');
+      setError('No tenant ID found. Please log in again.');
+      setIsLoading(false);
+      return;
+    }
+    setTenantId(storedTenantId);
+  }, []);
 
   useEffect(() => {
     const fetchUsers = async () => {
@@ -132,28 +143,93 @@ const AdminDashboard = () => {
 
   const handleAddCourse = async () => {
     try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found');
+      }
+
+      if (!tenantId) {
+        throw new Error('No tenant ID found');
+      }
+
+      if (!selectedCourses || selectedCourses.length === 0) {
+        throw new Error('No courses selected');
+      }
+
+      // Take the first selected course since we can only assign one at a time
+      const courseId = selectedCourses[0];
+
+      console.log('Making course assignment request with:', {
+        tenantId,
+        courseId,
+        token: token.substring(0, 10) + '...' // Log only part of token for security
+      });
+
+      const requestBody = {
+        courseId,
+        tenantId
+      };
+
+      console.log('Request body:', JSON.stringify(requestBody, null, 2));
+
       const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/courses/assign`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json'
         },
-        body: JSON.stringify({ tenantId, courseIds: selectedCourses }),
+        body: JSON.stringify(requestBody),
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to assign courses');
+      console.log('Response status:', response.status);
+      console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+
+      let responseData;
+      try {
+        responseData = await response.json();
+        console.log('Response data:', responseData);
+      } catch (e) {
+        console.error('Error parsing response:', e);
+        responseData = null;
       }
 
-      const data = await response.json();
-      console.log('Courses assigned:', data);
+      if (!response.ok) {
+        console.error('Error response data:', responseData);
+        throw new Error(responseData?.error || responseData?.message || `Failed to assign courses. Status: ${response.status}`);
+      }
+
+      // Check if explanations were generated
+      if (responseData && !responseData.explanations) {
+        console.warn('Course was assigned but explanations were not generated');
+        toast.warning('Course was assigned but explanations were not generated. Please try again later.');
+      } else {
+        console.log('Course assigned successfully with explanations');
+        toast.success('Course assigned successfully!');
+      }
+      
       setIsAddCourseDialogOpen(false);
+
       // Refresh the tenant courses after assignment
-      const fetchResponse = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/tenants/${tenantId}/courses`);
+      const fetchResponse = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/tenant-admin/tenants/${tenantId}/courses`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json'
+        }
+      });
+
       if (fetchResponse.ok) {
         const updatedCourses = await fetchResponse.json();
         setCourses(updatedCourses);
+        
         // Also refresh available courses to update the list
-        const availableResponse = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/courses`);
+        const availableResponse = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/courses`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Accept': 'application/json'
+          }
+        });
+
         if (availableResponse.ok) {
           const allCourses = await availableResponse.json();
           // Filter out courses that are already assigned to the tenant
@@ -165,6 +241,7 @@ const AdminDashboard = () => {
       }
     } catch (error) {
       console.error('Error assigning courses:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to assign courses');
     }
   };
 

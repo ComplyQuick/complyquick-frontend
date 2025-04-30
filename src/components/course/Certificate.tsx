@@ -6,9 +6,10 @@ interface CertificateProps {
   courseName: string;
   completionDate: string;
   score: number;
+  userName?: string;
 }
 
-const Certificate: React.FC<CertificateProps> = ({ courseName, completionDate, score }) => {
+const Certificate: React.FC<CertificateProps> = ({ courseName, completionDate, score, userName }) => {
   const certificateRef = React.useRef<HTMLDivElement>(null);
 
   const downloadCertificate = async () => {
@@ -67,11 +68,11 @@ const Certificate: React.FC<CertificateProps> = ({ courseName, completionDate, s
               <div>
                 <p className="text-xl text-gray-600">Presented to:</p>
                 <p className="text-4xl font-bold text-gray-900 mt-2">
-                  {localStorage.getItem('userName') || 'Student Name'}
-                </p>
+                  {userName || 'Student Name'}
+          </p>
               </div>
-
-              <p className="text-xl text-gray-600">
+          
+          <p className="text-xl text-gray-600">
                 For successfully completing a compliance course on<br />
                 <span className="font-semibold text-gray-800">"{courseName}"</span>
               </p>
@@ -86,7 +87,7 @@ const Certificate: React.FC<CertificateProps> = ({ courseName, completionDate, s
                 <p className="text-gray-600">Project Manager</p>
               </div>
             </div>
-
+            
             <div className="space-y-2">
               <div className="w-48 h-px bg-gray-800"></div>
               <div>

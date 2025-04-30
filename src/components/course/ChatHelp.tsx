@@ -282,7 +282,7 @@ const ChatHelp = ({ slideTitle, slideContent, tenantId }: ChatHelpProps) => {
     try {
       console.log('Sending request to chatbot with:', {
         chatHistory: [...messages, userMessage],
-        s3_url: courseMaterial.materialUrl,
+        presentation_url: courseMaterial.materialUrl,
         emergency_details: {
           presiding_officer_email: tenantDetails.details.presidingOfficerEmail,
           posh_committee_email: tenantDetails.details.poshCommitteeEmail,
@@ -299,7 +299,7 @@ const ChatHelp = ({ slideTitle, slideContent, tenantId }: ChatHelpProps) => {
         },
         body: JSON.stringify({
           chatHistory: [...messages, userMessage],
-          s3_url: courseMaterial.materialUrl,
+          presentation_url: courseMaterial.materialUrl,
           emergency_details: {
             presiding_officer_email: tenantDetails.details.presidingOfficerEmail,
             posh_committee_email: tenantDetails.details.poshCommitteeEmail,
@@ -323,15 +323,16 @@ const ChatHelp = ({ slideTitle, slideContent, tenantId }: ChatHelpProps) => {
       const data = await response.json();
       console.log('Chatbot response:', data);
       
+      const botReply = typeof data.response === 'object' && data.response.response ? data.response.response : data.response;
       const assistantMessage: ChatMessage = {
         role: 'assistant',
-        content: data.response
+        content: botReply
       };
 
       setMessages(prev => [...prev, assistantMessage]);
 
       // Automatically speak the response
-      await handleSpeakResponse(data.response);
+      await handleSpeakResponse(botReply);
     } catch (error) {
       console.error('Error sending message:', error);
       toast.error('Failed to get response from AI service');

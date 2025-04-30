@@ -12,19 +12,31 @@ interface QuizResult {
   userAnswer: string;
   correctAnswer: string;
   isCorrect: boolean;
+  usedHint: boolean;
 }
 
 const QuizResults = () => {
   const navigate = useNavigate();
   const { courseId } = useParams();
+  let courseIdFinal = courseId;
+  // Fallback: extract courseId from URL if undefined or empty
+  if (!courseIdFinal) {
+    const match = window.location.pathname.match(/course\/([\w-]+)/);
+    if (match && match[1]) {
+      courseIdFinal = match[1];
+    }
+  }
+  console.log('QuizResults: Final courseId used:', courseIdFinal);
   const [results, setResults] = useState<QuizResult[]>([]);
   const [score, setScore] = useState(0);
   const [loading, setLoading] = useState(true);
   const [courseName, setCourseName] = useState('');
+  const [userName, setUserName] = useState<string>("");
+  const [tenantId, setTenantId] = useState<string | null>(null);
 
   useEffect(() => {
     const storedResults = localStorage.getItem('quizResults');
-    const storedCourseName = localStorage.getItem(`course_name_${courseId}`);
+    const storedCourseName = localStorage.getItem(`course_name_${courseIdFinal}`);
     
     console.log('Stored results:', storedResults);
     
@@ -35,16 +47,32 @@ const QuizResults = () => {
         console.log('Number of questions:', parsedResults.length);
         
         setResults(parsedResults);
-        setCourseName(storedCourseName || 'Course');
+        // Fetch course title from backend
+        if (tenantId && courseIdFinal) {
+          fetch(`${import.meta.env.VITE_BACKEND_URL}/api/tenant-admin/tenants/${tenantId}/courses`)
+            .then(res => res.json())
+            .then(courses => {
+              console.log('Fetched courses:', courses);
+              const course = courses.find((c: any) => c.id === courseIdFinal);
+              console.log('Matched course:', course);
+              setCourseName(course?.title || 'Course');
+            })
+            .catch((err) => { console.log('Error fetching courses:', err); setCourseName('Course'); });
+        } else {
+          setCourseName('Course');
+        }
         
-        // Calculate score
-        const correctAnswers = parsedResults.filter((result: QuizResult) => result.isCorrect).length;
+        // Calculate score with hint penalty
+        const correctAnswers = parsedResults.filter((result: any) => result.isCorrect).length;
         const totalQuestions = parsedResults.length;
-        const calculatedScore = (correctAnswers / totalQuestions) * 100;
+        const hintsUsed = parsedResults.filter((result: any) => result.usedHint).length;
+        let calculatedScore = (correctAnswers / totalQuestions) * 100 - (hintsUsed * 3);
+        if (calculatedScore < 0) calculatedScore = 0;
         
         console.log('Score calculation:', {
           correctAnswers,
           totalQuestions,
+          hintsUsed,
           calculatedScore
         });
         
@@ -55,8 +83,30 @@ const QuizResults = () => {
     } else {
       console.log('No stored results found');
     }
+    // Fetch user name from profile endpoint
+    const token = localStorage.getItem('token');
+    if (token) {
+      fetch(`${import.meta.env.VITE_BACKEND_URL}/api/user-dashboard/profile`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      })
+        .then(res => res.json())
+        .then(data => {
+          if (data?.name) setUserName(data.name);
+        })
+        .catch(() => {});
+    }
+    // Get tenantId from localStorage or URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const tenantIdFromUrl = urlParams.get('tenantId');
+    const tenantIdFromStorage = localStorage.getItem('tenantId');
+    const tenantIdFinal = tenantIdFromUrl || tenantIdFromStorage;
+    setTenantId(tenantIdFinal);
+    console.log('QuizResults: tenantId', tenantIdFinal, 'courseId', courseIdFinal);
     setLoading(false);
-  }, [courseId]);
+  }, [courseIdFinal]);
 
   const handleReturnToDashboard = () => {
     // Clear the results from localStorage when returning to dashboard
@@ -158,6 +208,7 @@ const QuizResults = () => {
                     day: 'numeric'
                   })}
                   score={score}
+                  userName={userName}
                 />
               </CardContent>
             </Card>

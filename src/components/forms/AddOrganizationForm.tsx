@@ -104,7 +104,7 @@ const AddOrganizationForm: React.FC<AddOrganizationFormProps> = ({
         <DialogHeader>
           <DialogTitle className="text-2xl font-bold">Add New Organization</DialogTitle>
           <DialogDescription>
-            Fill in the basic details to create a new organization on CompliQuick.
+            Fill in the basic details to create a new organization on ComplyQuick.
           </DialogDescription>
         </DialogHeader>
 

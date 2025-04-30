@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
-import { coursesSlides, Slide } from "@/data/courseSlides";
+import { coursesSlides } from "@/data/courseSlides";
 import SlidePlayer from "@/components/course/SlidePlayer";
 import CourseNotFound from "@/components/course/CourseNotFound";
 import { useQuery } from "@tanstack/react-query";
@@ -93,26 +93,85 @@ const mockExplanations = {
 const CoursePlayer = () => {
   const { courseId } = useParams<{ courseId: string }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   
-  // Get tenant ID from localStorage
-  const tenantId = localStorage.getItem('tenantId');
-  const token = localStorage.getItem('token');
-  
-  console.log('CoursePlayer mounted with:', {
-    courseId,
-    token,
-    tenantId
-  });
+  // Get parameters from URL
+  const tenantId = searchParams.get('tenantId');
+  const token = searchParams.get('token');
+  const progressParam = searchParams.get('progress');
+  const progress = progressParam ? parseFloat(progressParam) : 0;
 
   const [slides, setSlides] = useState<Slide[]>([]);
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
   const [courseCompleted, setCourseCompleted] = useState(false);
-  
-  // Initialize with mock data
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Fetch explanations and set initial slide
   useEffect(() => {
-    console.log('Setting mock slides and explanations');
-    setSlides(mockSlides);
-  }, []);
+    const fetchExplanationsAndSetSlide = async () => {
+      if (!courseId || !tenantId || !token) {
+        console.error('Missing required parameters');
+        return;
+      }
+
+      try {
+        // Fetch explanations array
+        const response = await fetch(
+          `${import.meta.env.VITE_BACKEND_URL}/api/courses/${courseId}/explanations?tenantId=${tenantId}`,
+          {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            }
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error('Failed to fetch explanations');
+        }
+
+        const data = await response.json();
+        console.log('Explanations response:', data);
+
+        // The response is an object with an explanations array
+        const explanations = data.explanations || [];
+        
+        if (!Array.isArray(explanations)) {
+          throw new Error('Invalid explanations format received from API');
+        }
+
+        const totalSlides = explanations.length;
+        console.log('Total slides:', totalSlides);
+
+        // Calculate resume slide
+        let resumeSlide = 0;
+        if (progress > 0 && totalSlides > 0) {
+          resumeSlide = Math.round((progress * totalSlides) / 100);
+          // Ensure we don't exceed the total number of slides
+          if (resumeSlide >= totalSlides) resumeSlide = totalSlides - 1;
+        }
+        console.log('Resuming from slide:', resumeSlide + 1, 'out of', totalSlides);
+
+        // Convert explanations to slides format
+        const slidesData = explanations.map((explanation: any, index: number) => ({
+          id: `slide-${index + 1}`,
+          title: `Slide ${index + 1}`,
+          content: explanation.content || explanation, // Handle both object and string formats
+          completed: false
+        }));
+
+        setSlides(slidesData);
+        setCurrentSlideIndex(resumeSlide);
+        setIsLoading(false);
+      } catch (error) {
+        console.error('Error fetching explanations:', error);
+        toast.error('Failed to load course content');
+        setIsLoading(false);
+      }
+    };
+
+    fetchExplanationsAndSetSlide();
+  }, [courseId, tenantId, token, progress]);
 
   const handleSlideChange = (index: number) => {
     console.log('Changing slide from', currentSlideIndex, 'to', index);
@@ -132,7 +191,7 @@ const CoursePlayer = () => {
 
   if (!courseId) {
     console.log('No courseId found, showing CourseNotFound');
-    return <CourseNotFound onReturn={handleReturnToDashboard} />;
+    return <CourseNotFound />;
   }
 
   if (slides.length === 0) {
@@ -156,26 +215,27 @@ const CoursePlayer = () => {
         <div className="flex-1 flex flex-col lg:flex-row gap-4 p-4">
           <div className="flex-1 flex flex-col">
             <div className="flex-1 bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden">
-              <SlidePlayer
-                slides={slides}
-                currentSlideIndex={currentSlideIndex}
-                onSlideChange={handleSlideChange}
-                onComplete={handleCourseComplete}
-                explanations={mockExplanations}
-                isLoadingExplanations={false}
-              />
+        <SlidePlayer
+          slides={slides}
+          setSlides={setSlides}
+          currentSlideIndex={currentSlideIndex}
+          onSlideChange={handleSlideChange}
+          onComplete={handleCourseComplete}
+          explanations={mockExplanations}
+          isLoadingExplanations={isLoading}
+        />
             </div>
           </div>
 
-          {tenantId && (
+        {tenantId && (
             <div className="lg:w-96 bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden">
-              <ChatHelp
-                slideTitle={slides[currentSlideIndex]?.title || ""}
-                slideContent={slides[currentSlideIndex]?.content || ""}
-                tenantId={tenantId}
-              />
+          <ChatHelp
+            slideTitle={slides[currentSlideIndex]?.title || ""}
+            slideContent={slides[currentSlideIndex]?.content || ""}
+            tenantId={tenantId}
+          />
             </div>
-          )}
+        )}
         </div>
       </div>
 

@@ -309,7 +309,7 @@ const SuperUserDashboard = () => {
                 <CardHeader>
                   <CardTitle>Organizations</CardTitle>
                   <CardDescription>
-                    Manage all organizations registered on CompliQuick
+                    Manage all organizations registered on ComplyQuick
                   </CardDescription>
                 </CardHeader>
                 <CardContent>

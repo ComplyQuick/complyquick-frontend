@@ -139,7 +139,7 @@ const ContactForm = () => {
             className="lg:w-1/3 mb-10 lg:mb-0 space-y-6"
           >
             {[
-              { title: "Email", content: "contact@compliquick.com", icon: "✉️" },
+              { title: "Email", content: "contact@complyquick.com", icon: "✉️" },
               { title: "Phone", content: "+1 (555) 123-4567", icon: "📞" },
               { title: "Address", content: "123 Compliance Way, San Francisco, CA", icon: "📍" }
             ].map((item, index) => (

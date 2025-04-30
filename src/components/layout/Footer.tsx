@@ -10,7 +10,7 @@ const Footer = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           <div className="md:col-span-1">
             <Link to="/" className="flex items-center hover:scale-105 transition-transform duration-300">
-              <span className="text-2xl font-bold text-complybrand-800 dark:text-complybrand-300">CompliQuick</span>
+              <span className="text-2xl font-bold text-complybrand-800 dark:text-complybrand-300">ComplyQuick</span>
             </Link>
             <p className="mt-4 text-gray-600 dark:text-gray-400">
               Modern compliance training for modern organizations.
@@ -48,7 +48,7 @@ const Footer = () => {
         
         <div className="mt-12 pt-8 border-t border-gray-200 dark:border-gray-700 flex flex-col items-center animate-fade-in" style={{ animationDelay: "0.2s" }}>
           <p className="text-gray-600 dark:text-gray-400 text-sm">
-            &copy; {currentYear} CompliQuick. All rights reserved.
+            &copy; {currentYear} ComplyQuick. All rights reserved.
           </p>
         </div>
       </div>

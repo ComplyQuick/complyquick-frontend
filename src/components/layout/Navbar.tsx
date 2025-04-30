@@ -120,21 +120,14 @@ const Navbar = ({ userRole, onLogin }: NavbarProps) => {
           body: requestBody
         });
 
-        // Add timeout to the fetch request
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
-
         const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/auth/login`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'Accept': 'application/json',
           },
-          body: JSON.stringify(requestBody),
-          signal: controller.signal
+          body: JSON.stringify(requestBody)
         });
-
-        clearTimeout(timeoutId);
 
         console.log('Response Status:', response.status);
         console.log('Response Headers:', Object.fromEntries(response.headers.entries()));
@@ -150,44 +143,31 @@ const Navbar = ({ userRole, onLogin }: NavbarProps) => {
         localStorage.setItem('token', responseData.token);
         console.log('Stored token:', responseData.token);
         
-        // Store the tenant ID from the user's tenant object
-        if (responseData.user?.tenant?.id) {
-          localStorage.setItem('tenantId', responseData.user.tenant.id);
-          console.log('Stored tenant ID:', responseData.user.tenant.id);
-        } else {
-          console.error('No tenant ID found in login response:', responseData);
-          // Try to get tenant ID from domain
-          try {
-            console.log('Attempting to fetch tenant by domain:', cleanDomain);
-            const tenantResponse = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/tenants/domain/${cleanDomain}`);
-            console.log('Tenant lookup response status:', tenantResponse.status);
-            
-            if (tenantResponse.ok) {
-              const tenantData = await tenantResponse.json();
-              console.log('Tenant lookup response:', tenantData);
-              
-              if (tenantData.id) {
-                localStorage.setItem('tenantId', tenantData.id);
-                console.log('Stored tenant ID from domain lookup:', tenantData.id);
-              } else {
-                console.error('No tenant ID found in domain lookup response');
-              }
-            } else {
-              console.error('Failed to fetch tenant by domain');
-            }
-          } catch (error) {
-            console.error('Error fetching tenant by domain:', error);
-          }
+        // Decode the JWT token to get the tenant ID
+        const tokenParts = responseData.token.split('.');
+        if (tokenParts.length !== 3) {
+          throw new Error('Invalid token format');
         }
+        
+        const payload = JSON.parse(atob(tokenParts[1]));
+        const tenantId = payload.tenantId;
+        
+        if (!tenantId) {
+          throw new Error('No tenant ID found in token');
+        }
+        
+        // Store the tenant ID
+        localStorage.setItem('tenantId', tenantId);
+        console.log('Stored tenant ID:', tenantId);
         
         // Call the onLogin callback with the user role
         if (onLogin) {
-          onLogin(responseData.user.role.toLowerCase());
+          onLogin(payload.role.toLowerCase());
           
           // Redirect based on role
-          if (responseData.user.role === 'SUPER_ADMIN') {
+          if (payload.role === 'SUPER_ADMIN') {
             window.location.href = "/superuser/dashboard";
-          } else if (responseData.user.role === 'ADMIN') {
+          } else if (payload.role === 'ADMIN') {
             window.location.href = "/admin/dashboard";
           }
         }
@@ -196,11 +176,7 @@ const Navbar = ({ userRole, onLogin }: NavbarProps) => {
       } catch (error) {
         console.error('Login error:', error);
         if (error instanceof Error) {
-          if (error.name === 'AbortError') {
-            setErrorMessage("Connection timed out. Please check if the server is running and accessible.");
-          } else {
-            setErrorMessage(error.message || "Login failed. Please try again.");
-          }
+          setErrorMessage(error.message || "Login failed. Please try again.");
         } else {
           setErrorMessage("Login failed. Please try again.");
         }
@@ -293,7 +269,7 @@ const Navbar = ({ userRole, onLogin }: NavbarProps) => {
                 whileHover={{ scale: 1.05 }}
                 className="text-2xl font-bold text-complybrand-800 dark:text-complybrand-300 transition-colors"
               >
-                CompliQuick
+                ComplyQuick
               </motion.span>
             </Link>
           </div>

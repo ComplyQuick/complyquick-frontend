@@ -158,7 +158,7 @@ const Features = () => {
             transition={{ duration: 0.5, delay: 0.3 }}
             className="mt-4 max-w-2xl text-xl text-gray-500 dark:text-gray-400 lg:mx-auto"
           >
-            CompliQuick provides a comprehensive platform for creating, managing, and tracking compliance training programs.
+            ComplyQuick provides a comprehensive platform for creating, managing, and tracking compliance training programs.
           </motion.p>
         </motion.div>
 
