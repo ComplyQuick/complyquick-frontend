@@ -1,73 +1,232 @@
-# Welcome to your Lovable project
+# Quick Comply Academy
 
-## Project info
+A comprehensive learning management system (LMS) platform for compliance training and education.
 
-**URL**: https://lovable.dev/projects/fc61e5c9-f30a-4d92-91dd-70be32ebea45
+## Table of Contents
+- [Prerequisites](#prerequisites)
+- [Environment Setup](#environment-setup)
+- [Backend Setup](#backend-setup)
+- [Frontend Setup](#frontend-setup)
+- [Database Setup](#database-setup)
+- [Authentication Setup](#authentication-setup)
+- [Google Drive Integration](#google-drive-integration)
+- [Running the Application](#running-the-application)
+- [Project Structure](#project-structure)
+- [API Documentation](#api-documentation)
+- [Troubleshooting](#troubleshooting)
 
-## How can I edit this code?
+## Prerequisites
 
-There are several ways of editing your application.
+Before you begin, ensure you have the following installed:
+- Node.js (v18 or higher)
+- npm (v9 or higher)
+- Python (v3.11 or higher)
+- PostgreSQL (v14 or higher)
+- Git
+- Google Cloud Platform account
+- Google Drive API credentials
 
-**Use Lovable**
+## Environment Setup
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/fc61e5c9-f30a-4d92-91dd-70be32ebea45) and start prompting.
+1. Clone the repository:
+```bash
+git clone https://github.com/your-org/quick-comply-academy.git
+cd quick-comply-academy
+```
 
-Changes made via Lovable will be committed automatically to this repo.
+2. Create environment files:
+```bash
+# Backend
+cp backend/.env.example backend/.env
 
-**Use your preferred IDE**
+# Frontend
+cp frontend/.env.example frontend/.env
+```
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+3. Install global dependencies:
+```bash
+npm install -g typescript
+npm install -g ts-node
+```
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+## Backend Setup
 
-Follow these steps:
+1. Navigate to backend directory:
+```bash
+cd backend
+```
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+2. Create and activate virtual environment:
+```bash
+python -m venv venv
+# Windows
+.\venv\Scripts\activate
+# Linux/Mac
+source venv/bin/activate
+```
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+3. Install Python dependencies:
+```bash
+pip install -r requirements.txt
+```
 
-# Step 3: Install the necessary dependencies.
-npm i
+4. Configure environment variables in `backend/.env`:
+```env
+# Database
+DATABASE_URL=postgresql://user:password@localhost:5432/quick_comply
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+# JWT
+JWT_SECRET=your_jwt_secret
+JWT_ALGORITHM=HS256
+JWT_EXPIRATION=3600
+
+# Google Drive
+GOOGLE_DRIVE_CLIENT_ID=your_client_id
+GOOGLE_DRIVE_CLIENT_SECRET=your_client_secret
+GOOGLE_DRIVE_REDIRECT_URI=http://localhost:8000/auth/google/callback
+GOOGLE_DRIVE_REFRESH_TOKEN=your_refresh_token
+
+# Server
+PORT=8000
+CORS_ORIGINS=http://localhost:5173
+```
+
+## Frontend Setup
+
+1. Navigate to frontend directory:
+```bash
+cd frontend
+```
+
+2. Install dependencies:
+```bash
+npm install
+```
+
+3. Configure environment variables in `frontend/.env`:
+```env
+VITE_BACKEND_URL=http://localhost:8000
+VITE_GOOGLE_CLIENT_ID=your_google_client_id
+```
+
+## Database Setup
+
+1. Create PostgreSQL database:
+```bash
+createdb quick_comply
+```
+
+2. Run migrations:
+```bash
+cd backend
+alembic upgrade head
+```
+
+3. Seed initial data (if needed):
+```bash
+python scripts/seed_data.py
+```
+
+## Authentication Setup
+
+1. Set up Google OAuth:
+   - Go to [Google Cloud Console](https://console.cloud.google.com)
+   - Create a new project
+   - Enable Google Drive API
+   - Create OAuth 2.0 credentials
+   - Add authorized redirect URIs:
+     - `http://localhost:8000/auth/google/callback`
+     - `http://localhost:5173/auth/callback`
+
+2. Configure JWT:
+   - Generate a secure JWT secret
+   - Update `JWT_SECRET` in backend/.env
+
+## Google Drive Integration
+
+1. Enable Google Drive API:
+   - Go to [Google Cloud Console](https://console.cloud.google.com)
+   - Enable Google Drive API
+   - Create service account
+   - Download credentials JSON file
+
+2. Configure Google Drive:
+   - Place credentials file in `backend/credentials/`
+   - Update `GOOGLE_DRIVE_CLIENT_ID` and `GOOGLE_DRIVE_CLIENT_SECRET` in backend/.env
+
+## Running the Application
+
+1. Start the backend server:
+```bash
+cd backend
+uvicorn main:app --reload
+```
+
+2. Start the frontend development server:
+```bash
+cd frontend
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+3. Access the application:
+   - Frontend: http://localhost:5173
+   - Backend API: http://localhost:8000
+   - API Documentation: http://localhost:8000/docs
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+## Project Structure
 
-**Use GitHub Codespaces**
+```
+quick-comply-academy/
+├── backend/
+│   ├── alembic/              # Database migrations
+│   │   ├── api/             # API endpoints
+│   │   ├── core/            # Core functionality
+│   │   ├── models/          # Database models
+│   │   └── services/        # Business logic
+│   ├── credentials/         # Google Drive credentials
+│   ├── tests/               # Backend tests
+│   └── requirements.txt     # Python dependencies
+├── frontend/
+│   ├── public/              # Static assets
+│   │   ├── components/      # React components
+│   │   ├── pages/          # Page components
+│   │   ├── services/       # API services
+│   │   └── utils/          # Utility functions
+│   ├── tests/              # Frontend tests
+│   └── package.json        # Node dependencies
+└── README.md               # Project documentation
+```
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+## API Documentation
 
-## What technologies are used for this project?
+The API documentation is available at `http://localhost:8000/docs` when the backend server is running. It includes:
+- All available endpoints
+- Request/response schemas
+- Authentication requirements
+- Example requests
 
-This project is built with:
+## Troubleshooting
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+Common issues and solutions:
 
-## How can I deploy this project?
+1. **Database Connection Issues**
+   - Verify PostgreSQL is running
+   - Check DATABASE_URL in .env
+   - Ensure database exists and user has permissions
 
-Simply open [Lovable](https://lovable.dev/projects/fc61e5c9-f30a-4d92-91dd-70be32ebea45) and click on Share -> Publish.
+2. **Google Drive Integration Issues**
+   - Verify credentials file exists
+   - Check Google Drive API is enabled
+   - Ensure refresh token is valid
 
-## Can I connect a custom domain to my Lovable project?
+3. **Frontend Build Issues**
+   - Clear node_modules and reinstall
+   - Check for version conflicts
+   - Verify environment variables
 
-Yes it is!
+4. **Authentication Issues**
+   - Verify JWT secret
+   - Check token expiration
+   - Ensure CORS is properly configured
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+For additional support, please contact the development team or create an issue in the repository.

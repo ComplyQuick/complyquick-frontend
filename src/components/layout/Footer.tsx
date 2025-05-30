@@ -49,6 +49,8 @@ const Footer = () => {
         <div className="mt-12 pt-8 border-t border-gray-200 dark:border-gray-700 flex flex-col items-center animate-fade-in" style={{ animationDelay: "0.2s" }}>
           <p className="text-gray-600 dark:text-gray-400 text-sm">
             &copy; {currentYear} ComplyQuick. All rights reserved.
+            <br />
+            Training and awareness purposes only
           </p>
         </div>
       </div>

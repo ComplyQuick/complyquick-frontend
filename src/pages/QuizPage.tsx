@@ -1,6 +1,5 @@
-
 import { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import Navbar from "@/components/layout/Navbar";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Home } from "lucide-react";
@@ -141,8 +140,11 @@ const coursesQuizzes = {
 
 const QuizPage = () => {
   const { courseId } = useParams<{ courseId: string }>();
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const [questions, setQuestions] = useState<any[]>([]);
+  const tenantId = searchParams.get('tenantId');
+  const token = searchParams.get('token');
   
   useEffect(() => {
     if (courseId && coursesQuizzes[courseId as keyof typeof coursesQuizzes]) {
@@ -182,6 +184,10 @@ const QuizPage = () => {
     }
   };
 
+  const handleReturnToDashboard = () => {
+    navigate(`/dashboard?tenantId=${tenantId}&token=${token}`);
+  };
+
   return (
     <div className="min-h-screen flex flex-col">
       <div className="bg-white shadow-sm border-b">
@@ -196,7 +202,7 @@ const QuizPage = () => {
                "Anti-Harassment Training Quiz"}
             </h1>
           </div>
-          <Button variant="outline" onClick={() => navigate('/dashboard')}>
+          <Button variant="outline" onClick={handleReturnToDashboard}>
             <Home className="h-4 w-4 mr-2" />
             Dashboard
           </Button>

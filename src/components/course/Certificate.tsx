@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { forwardRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Download } from 'lucide-react';
+import { uploadCertificateToDrive } from '@/services/googleDriveService';
 
 interface CertificateProps {
   courseName: string;
@@ -9,26 +10,42 @@ interface CertificateProps {
   userName?: string;
 }
 
-const Certificate: React.FC<CertificateProps> = ({ courseName, completionDate, score, userName }) => {
-  const certificateRef = React.useRef<HTMLDivElement>(null);
+const Certificate = forwardRef<HTMLDivElement, CertificateProps>((props, ref) => {
+  const { courseName, completionDate, score, userName } = props;
 
   const downloadCertificate = async () => {
-    if (certificateRef.current) {
+    if (ref && 'current' in ref && ref.current) {
       try {
         const html2canvas = (await import('html2canvas')).default;
-        const canvas = await html2canvas(certificateRef.current, {
+        const canvas = await html2canvas(ref.current, {
           scale: 2,
           backgroundColor: '#ffffff',
           logging: true,
           useCORS: true,
         });
 
+        // Convert canvas to ArrayBuffer
+        const blob = await new Promise<Blob>((resolve) => {
+          canvas.toBlob((blob) => {
+            if (blob) resolve(blob);
+          }, 'image/png');
+        });
+        const arrayBuffer = await blob.arrayBuffer();
+        
+        // Generate filename
+        const fileName = `${courseName.replace(/\s+/g, '-')}-${userName?.replace(/\s+/g, '-') || 'Certificate'}-${new Date().toISOString().split('T')[0]}.png`;
+        
+        // Upload to Google Drive
+        const driveUrl = await uploadCertificateToDrive(arrayBuffer, fileName);
+        console.log('Certificate uploaded to Google Drive:', driveUrl);
+
+        // Download locally
         const link = document.createElement('a');
-        link.download = `${courseName.replace(/\s+/g, '-')}-Certificate.png`;
-        link.href = canvas.toDataURL('image/png');
+        link.download = fileName;
+        link.href = URL.createObjectURL(blob);
         link.click();
       } catch (error) {
-        console.error('Error generating certificate:', error);
+        console.error('Error generating/uploading certificate:', error);
       }
     }
   };
@@ -36,7 +53,7 @@ const Certificate: React.FC<CertificateProps> = ({ courseName, completionDate, s
   return (
     <div className="space-y-4">
       <div
-        ref={certificateRef}
+        ref={ref}
         className="relative w-[800px] h-[600px] mx-auto bg-white p-12"
         style={{
           background: '#ffffff',
@@ -69,10 +86,10 @@ const Certificate: React.FC<CertificateProps> = ({ courseName, completionDate, s
                 <p className="text-xl text-gray-600">Presented to:</p>
                 <p className="text-4xl font-bold text-gray-900 mt-2">
                   {userName || 'Student Name'}
-          </p>
+                </p>
               </div>
           
-          <p className="text-xl text-gray-600">
+              <p className="text-xl text-gray-600">
                 For successfully completing a compliance course on<br />
                 <span className="font-semibold text-gray-800">"{courseName}"</span>
               </p>
@@ -94,6 +111,12 @@ const Certificate: React.FC<CertificateProps> = ({ courseName, completionDate, s
                 <p className="font-bold text-gray-800">KAREN BELL</p>
                 <p className="text-gray-600">Company Director</p>
               </div>
+            </div>
+          </div>
+
+          <div className="flex justify-between items-end">  
+            <div className="space-y-1">
+              <p className="text-gray-600 text-[10px]">This certificate is awarded to acknowledge the successful completion of the compliance course(s) provided by ComplyQuick. While this certificate demonstrates the participant’s engagement and understanding of the course material, it does not serve as a legal certification or guarantee of compliance.</p>
             </div>
           </div>
 
@@ -122,6 +145,8 @@ const Certificate: React.FC<CertificateProps> = ({ courseName, completionDate, s
       </div>
     </div>
   );
-};
+});
+
+Certificate.displayName = 'Certificate';
 
 export default Certificate; 

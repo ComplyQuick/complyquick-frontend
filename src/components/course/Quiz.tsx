@@ -60,7 +60,7 @@ const Quiz = () => {
         [currentQuestion]: true
       }));
       setShowHint(true);
-      toast.warning('Hint used! 5 marks will be deducted for this question.');
+      toast.warning('Hint used! 3 marks will be deducted for this question.');
     }
   };
 
@@ -111,6 +111,8 @@ const Quiz = () => {
 
       // Store results in localStorage
       localStorage.setItem('quizResults', JSON.stringify(results));
+      // Store courseId for results page fallback
+      localStorage.setItem('lastQuizCourseId', courseId || '');
 
       // Navigate to results page
       navigate('/quiz-results');
@@ -222,7 +224,7 @@ const Quiz = () => {
                 key={index}
                 className={`w-3 h-3 rounded-full ${
                   answers[index]
-                    ? 'bg-green-500'
+                    ? 'bg-blue-500'
                     : 'bg-gray-300'
                 }`}
               />

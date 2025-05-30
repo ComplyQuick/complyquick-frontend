@@ -29,10 +29,8 @@ import { Label } from "@/components/ui/label";
 const courseFormSchema = z.object({
   title: z.string().min(2, { message: "Title is required" }),
   description: z.string().min(10, { message: "Description is required" }),
-  duration: z.string().min(1, { message: "Duration is required" }),
   tags: z.string().min(1, { message: "Tags are required" }),
   learningObjectives: z.string().min(1, { message: "Learning objectives are required" }),
-  targetAudience: z.string().min(1, { message: "Target audience is required" }),
   courseMaterial: z.any().refine((file) => file instanceof File, {
     message: "Course material is required",
   }),
@@ -58,10 +56,8 @@ const AddCourseForm: React.FC<AddCourseFormProps> = ({
     defaultValues: {
       title: "",
       description: "",
-      duration: "",
       tags: "",
       learningObjectives: "",
-      targetAudience: "",
       courseMaterial: null,
     },
   });
@@ -74,10 +70,8 @@ const AddCourseForm: React.FC<AddCourseFormProps> = ({
       // Append all form fields to FormData
       formData.append('title', data.title);
       formData.append('description', data.description);
-      formData.append('duration', data.duration);
       formData.append('tags', data.tags);
       formData.append('learningObjectives', data.learningObjectives);
-      formData.append('targetAudience', data.targetAudience);
       formData.append('courseMaterial', data.courseMaterial);
 
       const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/courses`, {
@@ -149,20 +143,6 @@ const AddCourseForm: React.FC<AddCourseFormProps> = ({
 
               <FormField
                 control={form.control}
-                name="duration"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Duration (in minutes)</FormLabel>
-                    <FormControl>
-                      <Input type="number" placeholder="Enter duration in minutes" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
                 name="tags"
                 render={({ field }) => (
                   <FormItem>
@@ -192,23 +172,6 @@ const AddCourseForm: React.FC<AddCourseFormProps> = ({
                   </FormItem>
                 )}
               />
-
-              <div className="space-y-2">
-                <Label htmlFor="targetAudience">Target Audience</Label>
-                <Select
-                  value={form.watch('targetAudience')}
-                  onValueChange={(value) => form.setValue('targetAudience', value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select target audience" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Everyone">Everyone</SelectItem>
-                    <SelectItem value="HR">HR</SelectItem>
-                    <SelectItem value="Software Developers">Software Developers</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
 
               <FormField
                 control={form.control}

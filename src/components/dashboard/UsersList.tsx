@@ -1,12 +1,24 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 
 interface User {
   id: string;
   name: string;
   email: string;
-  department: string;
   coursesCompleted: number;
   totalCourses: number;
   lastActivity: string;
@@ -17,12 +29,11 @@ interface UsersListProps {
   title?: string;
 }
 
-const UsersList = ({ users, title = "Users" }: UsersListProps) => {
+const UsersList = ({ users, title = "" }: UsersListProps) => {
   return (
     <Card>
       <CardHeader>
         <CardTitle>{title}</CardTitle>
-        <CardDescription>View and manage organization users</CardDescription>
       </CardHeader>
       <CardContent>
         <Table>
@@ -30,7 +41,6 @@ const UsersList = ({ users, title = "Users" }: UsersListProps) => {
             <TableRow>
               <TableHead>Name</TableHead>
               <TableHead>Email</TableHead>
-              <TableHead>Department</TableHead>
               <TableHead>Courses</TableHead>
               <TableHead>Status</TableHead>
             </TableRow>
@@ -40,7 +50,6 @@ const UsersList = ({ users, title = "Users" }: UsersListProps) => {
               <TableRow key={user.id}>
                 <TableCell className="font-medium">{user.name}</TableCell>
                 <TableCell>{user.email}</TableCell>
-                <TableCell>{user.department}</TableCell>
                 <TableCell>
                   <div className="flex flex-wrap gap-1">
                     <Badge variant="outline">
@@ -49,9 +58,9 @@ const UsersList = ({ users, title = "Users" }: UsersListProps) => {
                   </div>
                 </TableCell>
                 <TableCell>
-                  {user.coursesCompleted === user.totalCourses ? (
+                  {user.lastActivity === "Completed" ? (
                     <Badge variant="default">Completed</Badge>
-                  ) : user.coursesCompleted > 0 ? (
+                  ) : user.lastActivity === "In Progress" ? (
                     <Badge variant="outline">In Progress</Badge>
                   ) : (
                     <Badge variant="secondary">Not Started</Badge>

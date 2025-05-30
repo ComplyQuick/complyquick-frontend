@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { useParams, useSearchParams, useNavigate, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -10,6 +9,8 @@ const ResultPage = () => {
   const { courseId } = useParams<{ courseId: string }>();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const tenantId = searchParams.get('tenantId');
+  const token = searchParams.get('token');
   
   const passed = searchParams.get('passed') === 'true';
   const score = parseInt(searchParams.get('score') || '0');
@@ -24,7 +25,7 @@ const ResultPage = () => {
   }, []);
   
   const handleReturnToDashboard = () => {
-    navigate('/dashboard');
+    navigate(`/dashboard?tenantId=${tenantId}&token=${token}`);
   };
   
   const getCourseTitle = () => {

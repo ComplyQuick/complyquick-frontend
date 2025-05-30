@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, useParams, useLocation } from "react-router-dom";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import SuperUserDashboard from "./pages/SuperUserDashboard";
@@ -19,12 +19,33 @@ import { motion } from "framer-motion";
 import Quiz from '@/components/course/Quiz';
 import QuizResults from './pages/QuizResults';
 import Certificate from '@/components/course/Certificate';
+import Login from './pages/Login';
+import ProtectedRoute from './components/auth/ProtectedRoute';
 
 // Mock authentication for demonstration purposes
 // In a real app, we'd use proper authentication like Auth0, Clerk, or Supabase
 export type UserRole = "superuser" | "admin" | "employee" | null;
 
 const queryClient = new QueryClient();
+
+// Create a wrapper component for CoursePlayer
+const CoursePlayerWrapper = () => {
+  const { courseId } = useParams();
+  const location = useLocation();
+  const searchParams = new URLSearchParams(window.location.search);
+  
+  return (
+    <ProtectedRoute>
+      <CoursePlayer 
+        courseId={courseId || ''}
+        tenantId={searchParams.get('tenantId') || ''}
+        token={searchParams.get('token') || ''}
+        progress={parseFloat(searchParams.get('progress') || '0')}
+        properties={location.state?.properties}
+      />
+    </ProtectedRoute>
+  );
+};
 
 const App = () => {
   // Mock auth state - in a real app, this would use proper auth context
@@ -36,7 +57,7 @@ const App = () => {
         <TooltipProvider>
           <Toaster />
           <Sonner />
-          <BrowserRouter>
+          <Router>
             <div className="relative">
               {/* Global Theme Toggle */}
               <motion.div 
@@ -50,11 +71,19 @@ const App = () => {
 
               <Routes>
                 <Route path="/" element={<Index setUserRole={setUserRole} />} />
-                <Route path="/superuser/dashboard" element={<SuperUserDashboard />} />
+                <Route path="/login" element={<Login />} />
+                <Route
+                  path="/superuser/dashboard"
+                  element={
+                    <ProtectedRoute requiredRole="SUPER_ADMIN">
+                      <SuperUserDashboard />
+                    </ProtectedRoute>
+                  }
+                />
                 <Route path="/admin/dashboard" element={<AdminDashboard />} />
                 <Route path="/dashboard" element={<UserDashboard />} />
                 <Route path="/dashboard/course/:courseId" element={<CourseDetails />} />
-                <Route path="/dashboard/course/:courseId/play" element={<CoursePlayer />} />
+                <Route path="/dashboard/course/:courseId/play" element={<CoursePlayerWrapper />} />
                 <Route path="/dashboard/course/:courseId/quiz" element={<Quiz />} />
                 <Route path="/dashboard/course/:courseId/result" element={<ResultPage />} />
                 <Route path="/admin/reports/user/:userId" element={<UserDashboard />} />
@@ -71,7 +100,7 @@ const App = () => {
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </div>
-          </BrowserRouter>
+          </Router>
         </TooltipProvider>
       </ThemeProvider>
     </QueryClientProvider>

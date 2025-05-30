@@ -163,14 +163,14 @@ const SuperUserDashboard = () => {
             </div>
             <div className="flex space-x-3 animate-fade-in">
               <Button 
-                className="bg-complybrand-700 hover:bg-complybrand-800 hover:shadow-lg transition-all duration-300"
+                className="bg-complybrand-700 hover:bg-complybrand-800 hover:shadow-lg transition-all duration-300 text-white"
                 onClick={() => setOrganizationDialogOpen(true)}
               >
                 <PlusCircle className="mr-2 h-4 w-4" />
                 Add Organization
               </Button>
               <Button 
-                className="bg-complybrand-700 hover:bg-complybrand-800 hover:shadow-lg transition-all duration-300"
+                className="bg-complybrand-700 hover:bg-complybrand-800 hover:shadow-lg transition-all duration-300 text-white"
                 onClick={() => setCourseDialogOpen(true)}
               >
                 <PlusCircle className="mr-2 h-4 w-4" />
@@ -219,9 +219,9 @@ const SuperUserDashboard = () => {
                 <div className="text-2xl font-bold animate-fade-in">
                   {tenants.reduce((acc, tenant) => acc + (tenant.users?.length || 0), 0)}
                 </div>
-                <p className="text-xs text-muted-foreground">
+                {/* <p className="text-xs text-muted-foreground">
                   +43 from last month
-                </p>
+                </p> */}
               </CardContent>
             </Card>
           </div>

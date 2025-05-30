@@ -55,7 +55,7 @@ const Hero = () => {
                 transition={{ duration: 0.7, delay: 0.6 }}
                 className="mt-3 text-base text-gray-100 dark:text-gray-200 sm:mt-5 sm:text-xl lg:text-lg xl:text-xl"
               >
-                ComplyQuick helps organizations deliver effective compliance training that employees actually complete. Our platform streamlines the entire compliance training process.
+                ComplyQuick is a comprehensive compliance learning platform designed to help organizations stay ahead of regulatory requirements. Simplify your compliance training with ComplyQuick — learning made quick, easy, and effective.
               </motion.p>
               <motion.div 
                 initial={{ opacity: 0, y: 20 }}
@@ -65,17 +65,20 @@ const Hero = () => {
               >
                 <div className="rounded-md shadow hover:shadow-lg transition-all duration-300">
                   <a href="#contact">
-                    <Button className="w-full flex items-center justify-center px-8 py-3 text-base font-medium bg-complybrand-700 hover:bg-complybrand-800 transition-transform hover:scale-105 dark:bg-complybrand-600 dark:hover:bg-complybrand-700">
-                      Get Started
-                      <ArrowRight className="ml-2 h-4 w-4 animate-[pulse_2s_infinite]" />
-                    </Button>
+                  <Button className="w-full flex items-center justify-center px-8 py-3 text-base font-medium text-white bg-complybrand-700 hover:bg-complybrand-800 transition-transform hover:scale-105 dark:bg-complybrand-600 dark:hover:bg-complybrand-700">
+                    Get Started
+                    <ArrowRight className="ml-2 h-4 w-4 animate-[pulse_2s_infinite]" />
+                  </Button>
                   </a>
                 </div>
                 <div className="mt-3 sm:mt-0 sm:ml-3">
                   <a href="#features">
-                    <Button variant="outline" className="w-full flex items-center justify-center px-8 py-3 text-base font-medium transition-transform hover:scale-105 border-white text-white hover:bg-white/10 dark:border-gray-300 dark:text-gray-300 dark:hover:bg-white/5">
-                      Learn More
-                    </Button>
+                  <Button
+                    variant="outline"
+                    className="w-full flex items-center justify-center px-8 py-3 text-base font-medium transition-transform hover:scale-105 border-white text-black hover:bg-white/10 dark:border-gray-300 dark:text-gray-300 dark:hover:bg-white/5"
+                  >
+                    Learn More
+                  </Button>
                   </a>
                 </div>
               </motion.div>

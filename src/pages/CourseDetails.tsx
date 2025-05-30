@@ -1,6 +1,5 @@
-
 import { useState, useEffect } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useSearchParams, useNavigate } from "react-router-dom";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import { Button } from "@/components/ui/button";
@@ -72,7 +71,11 @@ const coursesData = [
 
 const CourseDetails = () => {
   const { courseId } = useParams<{ courseId: string }>();
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const [course, setCourse] = useState<any>(null);
+  const tenantId = searchParams.get('tenantId');
+  const token = searchParams.get('token');
   
   useEffect(() => {
     // In a real app, this would be an API call
@@ -104,6 +107,10 @@ const CourseDetails = () => {
     0
   );
 
+  const handleReturnToDashboard = () => {
+    navigate(`/dashboard?tenantId=${tenantId}&token=${token}`);
+  };
+
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar userRole="employee" />
@@ -111,9 +118,13 @@ const CourseDetails = () => {
         <div className="container mx-auto px-4 py-8">
           <div className="max-w-4xl mx-auto">
             <div className="mb-8">
-              <Link to="/dashboard" className="text-complybrand-600 hover:underline mb-4 inline-block">
+              <Button 
+                variant="ghost" 
+                onClick={handleReturnToDashboard}
+                className="text-complybrand-600 hover:underline mb-4 inline-block"
+              >
                 ← Back to Dashboard
-              </Link>
+              </Button>
               
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
                 <div>

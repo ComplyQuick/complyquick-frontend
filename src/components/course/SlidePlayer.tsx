@@ -1,21 +1,28 @@
 import { useState, useEffect, useRef } from "react";
-import { Card } from "@/components/ui/card";
 import SlideControls from "./SlideControls";
 import SlideNavigation from "./SlideNavigation";
-import SlideContent from "./SlideContent";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { useNavigate, useSearchParams, useParams } from 'react-router-dom';
-import GoogleSlidesViewer from '@/components/dashboard/GoogleSlidesViewer';
+import { useParams } from "react-router-dom";
+import GoogleSlidesViewer from "@/components/dashboard/GoogleSlidesViewer";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Menu } from "lucide-react";
+import { Loader } from "@/components/ui/loader";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 
 interface Explanation {
   slide: number;
   content: string;
   explanation: string;
+  explanation_audio: string;
+  explanation_subtitle: string;
 }
 
 interface Slide {
@@ -27,19 +34,68 @@ interface Slide {
 }
 
 interface SlidePlayerProps {
-  slides: Slide[];
-  setSlides: (slides: Slide[]) => void;
+  slides: {
+    id: string;
+    title: string;
+    content: string;
+    completed: boolean;
+  }[];
+  setSlides: (
+    slides: {
+      id: string;
+      title: string;
+      content: string;
+      completed: boolean;
+    }[]
+  ) => void;
   currentSlideIndex: number;
   onSlideChange: (index: number) => void;
   onComplete: () => void;
-  explanations: Record<string, string>;
+  explanations: {
+    slide: number;
+    content: string;
+    explanation: string;
+    explanation_audio: string;
+  }[];
   isLoadingExplanations: boolean;
+  properties: {
+    skippable: boolean;
+    mandatory: boolean;
+    retryType: "SAME" | "DIFFERENT";
+  };
+  onSkipForward: () => void;
+  onSkipBackward: () => void;
+  resumeSlideIndex: number;
 }
 
-async function getGoogleSlidesCount(presentationId, apiKey) {
-  const res = await fetch(`https://slides.googleapis.com/v1/presentations/${presentationId}?key=${apiKey}`);
-  const data = await res.json();
-  return data.slides.length;
+function parseWebVTT(vttText: string) {
+  const lines = vttText.split("\n");
+  const subtitles: { start: number; end: number; text: string }[] = [];
+  let currentSubtitle: { start: number; end: number; text: string } | null =
+    null;
+
+  for (const line of lines) {
+    if (line.includes("-->")) {
+      const [start, end] = line.split(" --> ").map((time) => {
+        const [h, m, s] = time.split(":");
+        return parseFloat(h) * 3600 + parseFloat(m) * 60 + parseFloat(s);
+      });
+      currentSubtitle = { start, end, text: "" };
+    } else if (currentSubtitle && line.trim() && !line.startsWith("WEBVTT")) {
+      currentSubtitle.text += line.trim() + " ";
+    } else if (currentSubtitle && !line.trim() && currentSubtitle.text) {
+      currentSubtitle.text = currentSubtitle.text.trim();
+      subtitles.push(currentSubtitle);
+      currentSubtitle = null;
+    }
+  }
+
+  if (currentSubtitle && currentSubtitle.text) {
+    currentSubtitle.text = currentSubtitle.text.trim();
+    subtitles.push(currentSubtitle);
+  }
+
+  return subtitles;
 }
 
 const SlidePlayer = ({
@@ -50,6 +106,10 @@ const SlidePlayer = ({
   onComplete,
   explanations,
   isLoadingExplanations,
+  properties,
+  onSkipForward,
+  onSkipBackward,
+  resumeSlideIndex,
 }: SlidePlayerProps) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [volume, setVolume] = useState(80);
@@ -62,110 +122,113 @@ const SlidePlayer = ({
   const [currentExplanation, setCurrentExplanation] = useState<string>("");
   const [currentSubtitle, setCurrentSubtitle] = useState<string>("");
   const [materialUrl, setMaterialUrl] = useState<string>("");
+  const audioRef = useRef<HTMLAudioElement | null>(null);
   const progressTimerRef = useRef<number | null>(null);
-  const lastPressRef = useRef<number>(0);
-  const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
-  const currentPositionRef = useRef<number>(0);
-  const navigate = useNavigate();
   const { courseId } = useParams();
-  const [searchParams] = useSearchParams();
-  const [showSkipFeedback, setShowSkipFeedback] = useState<'forward' | 'backward' | null>(null);
+  const [showSkipFeedback, setShowSkipFeedback] = useState<
+    null | "forward" | "backward"
+  >(null);
   const [showOverlayControls, setShowOverlayControls] = useState(false);
-  const subtitleRef = useRef<HTMLDivElement>(null);
-  const lastSubtitleUpdateRef = useRef<number>(0);
-  const currentUtteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
-  const [isNavOpen, setIsNavOpen] = useState(false);
-  
-  const currentSlide = slides[currentSlideIndex];
+  const [showCompletionModal, setShowCompletionModal] = useState(false);
+  const [isGeneratingMCQ, setIsGeneratingMCQ] = useState(false);
+  const [maxVisitedSlide, setMaxVisitedSlide] = useState(resumeSlideIndex);
   const isLastSlide = currentSlideIndex === slides.length - 1;
-  const isFirstSlide = currentSlideIndex === 0;
-  const totalCompleted = slides.filter(slide => slide.completed).length;
+  const totalCompleted = slides.filter((slide) => slide.completed).length;
   const overallProgress = (totalCompleted / slides.length) * 100;
-  
+
   // Fetch explanations when component mounts
   useEffect(() => {
     const fetchExplanations = async () => {
       try {
-        const tenantId = localStorage.getItem('tenantId');
+        const tenantId = localStorage.getItem("tenantId");
         if (!courseId || !tenantId) {
-          console.error('Missing courseId or tenantId:', { courseId, tenantId });
-          throw new Error('Missing courseId or tenantId');
+          console.error("Missing courseId or tenantId:", {
+            courseId,
+            tenantId,
+          });
+          throw new Error("Missing courseId or tenantId");
         }
 
         // First fetch course details to get materialUrl
-        console.log('Fetching course details...', {
-          url: `${import.meta.env.VITE_BACKEND_URL}/api/tenant-admin/tenants/${tenantId}/courses`,
+        console.log("Fetching course details...", {
+          url: `${
+            import.meta.env.VITE_BACKEND_URL
+          }/api/tenant-admin/tenants/${tenantId}/courses`,
           courseId,
-          tenantId
+          tenantId,
         });
-        
+
         const courseResponse = await fetch(
-          `${import.meta.env.VITE_BACKEND_URL}/api/tenant-admin/tenants/${tenantId}/courses`
+          `${
+            import.meta.env.VITE_BACKEND_URL
+          }/api/tenant-admin/tenants/${tenantId}/courses`
         );
 
         if (!courseResponse.ok) {
-          console.error('Failed to fetch course details:', {
+          console.error("Failed to fetch course details:", {
             status: courseResponse.status,
-            statusText: courseResponse.statusText
+            statusText: courseResponse.statusText,
           });
-          throw new Error('Failed to fetch course details');
+          throw new Error("Failed to fetch course details");
         }
 
         const courseData = await courseResponse.json();
-        console.log('Course data received:', courseData);
 
         // Find the current course in the list
-        const currentCourse = courseData.find((course: any) => course.id === courseId);
+        const currentCourse = courseData.find(
+          (course: any) => course.id === courseId
+        );
         if (!currentCourse) {
-          console.error('Current course not found:', { 
-            courseId, 
-            availableCourseIds: courseData.map((c: any) => c.id)
+          console.error("Current course not found:", {
+            courseId,
+            availableCourseIds: courseData.map((c: any) => c.id),
           });
-          throw new Error('Current course not found');
+          throw new Error("Current course not found");
         }
-
-        console.log('Current course found:', {
-          id: currentCourse.id,
-          materialUrl: currentCourse.materialUrl
-        });
-
         // Update the material URL state
         if (currentCourse.materialUrl) {
-          console.log('Setting material URL:', currentCourse.materialUrl);
           setMaterialUrl(currentCourse.materialUrl);
         } else {
-          console.warn('No materialUrl found in course details');
+          console.warn("No materialUrl found in course details");
         }
-
-        // Now fetch explanations
-        console.log('Fetching explanations...');
         const response = await fetch(
-          `${import.meta.env.VITE_BACKEND_URL}/api/courses/${courseId}/explanations?tenantId=${tenantId}`
+          `${
+            import.meta.env.VITE_BACKEND_URL
+          }/api/courses/${courseId}/explanations?tenantId=${tenantId}`
         );
 
         if (!response.ok) {
-          console.error('Failed to fetch explanations:', {
+          console.error("Failed to fetch explanations:", {
             status: response.status,
-            statusText: response.statusText
+            statusText: response.statusText,
           });
-          throw new Error('Failed to fetch explanations');
+          throw new Error("Failed to fetch explanations");
         }
 
         const data = await response.json();
-        console.log('Explanations data:', data);
-        
-        setSlideExplanations(data.explanations);
-        
-        // Set initial explanation
-        const initialExplanation = data.explanations.find(
-          (exp: Explanation) => exp.slide === currentSlideIndex + 1
-        );
-        if (initialExplanation) {
-          setCurrentExplanation(initialExplanation.explanation);
+
+        if (data.explanations && Array.isArray(data.explanations)) {
+          setSlideExplanations(data.explanations);
+
+          // Set initial explanation
+          const initialExplanation = data.explanations.find(
+            (exp: Explanation) => exp.slide === currentSlideIndex + 1
+          );
+          if (initialExplanation) {
+            setCurrentExplanation(initialExplanation.explanation);
+            if (initialExplanation.explanation_subtitle) {
+              const subtitles = parseWebVTT(
+                initialExplanation.explanation_subtitle
+              );
+              if (subtitles.length > 0) {
+                setCurrentSubtitle(subtitles[0].text);
+              }
+            }
+          }
         }
       } catch (error) {
-        console.error('Error in fetchExplanations:', error);
-        toast.error('Failed to load slide explanations');
+        console.error("Error in fetchExplanations:", error);
+        toast.error("Failed to load slide explanations");
       }
     };
 
@@ -181,188 +244,121 @@ const SlidePlayer = ({
       setCurrentExplanation(explanation.explanation);
       // Reset progress and playback state
       setProgress(0);
-      setIsPlaying(false);
+      setIsPlaying(true);
       if (progressTimerRef.current) {
         window.clearInterval(progressTimerRef.current);
         progressTimerRef.current = null;
       }
     }
   }, [currentSlideIndex, slideExplanations]);
-  
-  // Initialize speech synthesis
+
+  // Initialize audio element
   useEffect(() => {
-    if ('speechSynthesis' in window) {
-      const newUtterance = new SpeechSynthesisUtterance();
-      const voices = window.speechSynthesis.getVoices();
-      const femaleVoice = voices.find(voice => voice.name.includes('female'));
-      if (femaleVoice) {
-        newUtterance.voice = femaleVoice;
-      }
-      utteranceRef.current = newUtterance;
-    } else {
-      toast.error('Text-to-speech is not supported in your browser');
+    if (!audioRef.current) {
+      audioRef.current = new Audio();
     }
 
+    const audio = audioRef.current;
+
+    // Set up audio event listeners
+    audio.addEventListener("timeupdate", () => {
+      if (audio.duration) {
+        const percent = (audio.currentTime / audio.duration) * 100;
+        setProgress(percent);
+        if (percent >= 80 && !canAdvance) {
+          setCanAdvance(true);
+        }
+
+        // Update current subtitle based on audio time
+        const explanation = slideExplanations.find(
+          (exp) => exp.slide === currentSlideIndex + 1
+        );
+
+        if (explanation?.explanation_subtitle) {
+          const subtitles = parseWebVTT(explanation.explanation_subtitle);
+          const currentSubtitle = subtitles.find(
+            (sub) =>
+              audio.currentTime >= sub.start && audio.currentTime <= sub.end
+          );
+
+          if (currentSubtitle?.text) {
+            setCurrentSubtitle(currentSubtitle.text);
+          } else {
+            setCurrentSubtitle("");
+          }
+        }
+      }
+    });
+
+    audio.addEventListener("ended", () => {
+      setIsPlaying(false);
+      setProgress(100);
+      setCanAdvance(true);
+
+      // Auto advance to next slide if not the last slide
+      if (currentSlideIndex < slides.length - 1) {
+        handleNext();
+      } else {
+        // If it's the last slide, show completion state
+        handleComplete();
+      }
+    });
+
+    audio.addEventListener("play", () => {
+      setIsPlaying(true);
+    });
+
+    audio.addEventListener("pause", () => {
+      setIsPlaying(false);
+    });
+
     return () => {
-      if (window.speechSynthesis) {
-        window.speechSynthesis.cancel();
-      }
-      if (progressTimerRef.current) {
-        window.clearInterval(progressTimerRef.current);
-      }
+      audio.pause();
+      audio.removeEventListener("timeupdate", () => {});
+      audio.removeEventListener("ended", () => {});
+      audio.removeEventListener("play", () => {});
+      audio.removeEventListener("pause", () => {});
     };
-  }, []);
-  
-  // Reset progress when slide changes
+  }, [currentSlideIndex, slideExplanations]);
+
+  // Update audio source when explanation changes
   useEffect(() => {
-    setProgress(0);
-    setCanAdvance(false);
-    
-    // Clear any existing timer
-    if (progressTimerRef.current) {
-      window.clearInterval(progressTimerRef.current);
-      progressTimerRef.current = null;
-    }
-    
-    // Reset play state
-    setIsPlaying(false);
-  }, [currentSlideIndex]);
-  
-  // Update audio volume and mute state
-  useEffect(() => {
-    if (utteranceRef.current) {
-      utteranceRef.current.volume = isMuted ? 0 : volume / 100;
-    }
-  }, [volume, isMuted]);
-  
-  // Simulate playback - in a real app, this would sync with actual audio/video
-  useEffect(() => {
-    if (isPlaying) {
-      // Start progress timer
-      startProgressTimer();
-    }
-  }, [isPlaying]);
-  
-  // Update playback rate
-  useEffect(() => {
-    // In a real implementation, update audio playbackRate
-    // if (utteranceRef.current) {
-    //   utteranceRef.current.playbackRate = playbackRate;
-    // }
-  }, [playbackRate]);
-  
-  // Update utterance when explanation changes
-  useEffect(() => {
-    if (utteranceRef.current && currentExplanation) {
-      const newUtterance = new SpeechSynthesisUtterance(currentExplanation);
-      newUtterance.rate = playbackRate;
-      newUtterance.volume = isMuted ? 0 : volume / 100;
-      
-      newUtterance.onstart = () => {
-        setIsPlaying(true);
-        currentUtteranceRef.current = newUtterance;
-      };
-      
-      newUtterance.onend = () => {
+    const explanation = slideExplanations.find(
+      (exp) => exp.slide === currentSlideIndex + 1
+    );
+    if (explanation && audioRef.current) {
+      setCurrentExplanation(explanation.explanation);
+      audioRef.current.src = explanation.explanation_audio;
+      audioRef.current.load();
+      setProgress(0);
+      setIsPlaying(true);
+      // Auto play the audio
+      audioRef.current.play().catch((error) => {
+        console.error("Error auto-playing audio:", error);
+        // If autoplay fails, we'll keep the play button visible
         setIsPlaying(false);
-        setProgress(100);
-        setCanAdvance(true);
-        currentUtteranceRef.current = null;
-      };
-      
-      newUtterance.onpause = () => {
-        setIsPlaying(false);
-      };
-      
-      newUtterance.onresume = () => {
-        setIsPlaying(true);
-      };
-      
-      utteranceRef.current = newUtterance;
+      });
     }
-  }, [currentExplanation, playbackRate, volume, isMuted]);
+  }, [currentSlideIndex, slideExplanations]);
 
   // Handle play/pause
   const togglePlayback = () => {
-    if (!utteranceRef.current || !currentExplanation) return;
+    if (!audioRef.current) return;
 
     if (isPlaying) {
-      window.speechSynthesis.pause();
-      if (progressTimerRef.current) {
-        window.clearInterval(progressTimerRef.current);
-        progressTimerRef.current = null;
-      }
+      audioRef.current.pause();
     } else {
-      window.speechSynthesis.cancel();
-      
-      const newUtterance = new SpeechSynthesisUtterance(currentExplanation);
-      newUtterance.rate = playbackRate;
-      newUtterance.volume = isMuted ? 0 : volume / 100;
-      
-      newUtterance.onstart = () => {
-        setIsPlaying(true);
-        startProgressTimer();
-      };
-      
-      newUtterance.onend = () => {
-        setIsPlaying(false);
-        setProgress(100);
-        setCanAdvance(true);
-        if (progressTimerRef.current) {
-          window.clearInterval(progressTimerRef.current);
-        }
-      };
-      
-      utteranceRef.current = newUtterance;
-      window.speechSynthesis.speak(newUtterance);
+      audioRef.current.play();
     }
-    setIsPlaying(!isPlaying);
   };
-
-  // Start progress timer
-  const startProgressTimer = () => {
-    if (progressTimerRef.current) {
-      window.clearInterval(progressTimerRef.current);
-    }
-    
-    const totalLength = currentExplanation.length;
-    const duration = (totalLength / 25) * (1 / playbackRate) * 1000; // Rough estimate of duration
-    const interval = 100;
-    
-    progressTimerRef.current = window.setInterval(() => {
-      setProgress(prev => {
-        const increment = (interval / duration) * 100;
-        const nextProgress = Math.min(prev + increment, 100);
-        
-        if (nextProgress >= 80 && !canAdvance) {
-          setCanAdvance(true);
-        }
-        
-        if (nextProgress >= 100) {
-          if (progressTimerRef.current) {
-            window.clearInterval(progressTimerRef.current);
-          }
-          return 100;
-        }
-        
-        return nextProgress;
-      });
-    }, interval) as unknown as number;
-  };
-
-  // Reset position when slide changes
-  useEffect(() => {
-    currentPositionRef.current = 0;
-    setProgress(0);
-    if (window.speechSynthesis) {
-      window.speechSynthesis.cancel();
-    }
-  }, [currentSlideIndex]);
 
   // Handle volume change
   const handleVolumeChange = (value: number[]) => {
     const newVolume = value[0];
     setVolume(newVolume);
+    if (audioRef.current) {
+      audioRef.current.volume = newVolume / 100;
+    }
     if (newVolume > 0 && isMuted) {
       setIsMuted(false);
     }
@@ -370,349 +366,294 @@ const SlidePlayer = ({
 
   // Handle mute toggle
   const toggleMute = () => {
-    setIsMuted(!isMuted);
+    if (!audioRef.current) return;
+    const newMuted = !isMuted;
+    setIsMuted(newMuted);
+    audioRef.current.muted = newMuted;
   };
 
   // Handle playback rate change
   const changePlaybackRate = (rate: number) => {
     setPlaybackRate(rate);
-    if (window.speechSynthesis && isPlaying) {
-      window.speechSynthesis.cancel();
-      
-      const newUtterance = new SpeechSynthesisUtterance(currentExplanation);
-      newUtterance.rate = rate;
-      newUtterance.volume = isMuted ? 0 : volume / 100;
-      
-      newUtterance.onstart = () => {
-        setIsPlaying(true);
-        startProgressTimer();
-      };
-      
-      newUtterance.onend = () => {
-        setIsPlaying(false);
-        setProgress(100);
-        setCanAdvance(true);
-        if (progressTimerRef.current) {
-          window.clearInterval(progressTimerRef.current);
-        }
-      };
-      
-      utteranceRef.current = newUtterance;
-      window.speechSynthesis.speak(newUtterance);
+    if (audioRef.current) {
+      audioRef.current.playbackRate = rate;
     }
   };
+
+  // Handle skip forward/backward
+  const handleSkip = (direction: "forward" | "backward") => {
+    if (!audioRef.current || !properties.skippable) return;
+
+    setShowSkipFeedback(direction);
+    setTimeout(() => setShowSkipFeedback(null), 700);
+
+    const skipSeconds = direction === "forward" ? 5 : -5;
+    const newTime = Math.max(0, audioRef.current.currentTime + skipSeconds);
+    audioRef.current.currentTime = newTime;
+  };
+
+  // Reset audio when slide changes
+  useEffect(() => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+    }
+    setProgress(0);
+    setCanAdvance(false);
+  }, [currentSlideIndex]);
 
   // Handle slide navigation
-  const handleNext = async () => {
-    if (!canAdvance && progress < 80) {
-      toast.info("Please complete at least 80% of this slide before moving to the next one");
-      return;
-    }
-    
-    // Stop current speech
-    window.speechSynthesis.cancel();
-    if (progressTimerRef.current) {
-      window.clearInterval(progressTimerRef.current);
-    }
-    
-    try {
-      const tenantId = localStorage.getItem('tenantId');
-      if (!tenantId) {
-        throw new Error('Tenant ID not found');
+  useEffect(() => {
+    setMaxVisitedSlide((prev) => {
+      if (currentSlideIndex > prev) {
+        console.log(
+          "[SlidePlayer] Updating maxVisitedSlide:",
+          currentSlideIndex,
+          "(prev:",
+          prev,
+          ")"
+        );
+        return currentSlideIndex;
       }
+      return prev;
+    });
+  }, [currentSlideIndex]);
 
-      // Update progress on the backend
-      const response = await fetch(
-        `${import.meta.env.VITE_BACKEND_URL}/api/courses/${courseId}/update-progress`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          },
-          body: JSON.stringify({
-            slideNumber: currentSlideIndex + 1 // Convert to 1-based index
-          })
-        }
-      );
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        console.error('Progress update failed:', errorData);
-        throw new Error('Failed to update progress');
-      }
-
-      // Mark current slide as completed locally
-      const updatedSlides = [...slides];
-      updatedSlides[currentSlideIndex] = {
-        ...updatedSlides[currentSlideIndex],
-        completed: true
-      };
-      setSlides(updatedSlides);
-      
-      if (currentSlideIndex < slideExplanations.length - 1) {
-        onSlideChange(currentSlideIndex + 1);
-      } else {
-        handleComplete();
-      }
-    } catch (error) {
-      console.error('Error updating progress:', error);
-      toast.error('Failed to update progress. Please try again.');
-    }
-  };
-
-  const handlePrev = () => {
-    // Stop current speech
-    window.speechSynthesis.cancel();
-    if (progressTimerRef.current) {
-      window.clearInterval(progressTimerRef.current);
-    }
-    
-    if (currentSlideIndex > 0) {
-      onSlideChange(currentSlideIndex - 1);
-    }
-  };
-  
   const handleSlideSelect = (index: number) => {
-    // Allow navigating to any previous slide
-    if (index < currentSlideIndex) {
+    console.log("[SlidePlayer] handleSlideSelect", {
+      index,
+      maxVisitedSlide,
+      currentSlideIndex,
+      canAdvance,
+      progress,
+    });
+    // Allow navigation to any slide up to maxVisitedSlide
+    if (index <= maxVisitedSlide) {
+      console.log(
+        "[SlidePlayer] Navigating to slide",
+        index,
+        "(<= maxVisitedSlide)"
+      );
       onSlideChange(index);
       return;
     }
-    
-    // For forward navigation, check progress
+    // For future slides, require 80% completion of the current slide
     if (!canAdvance && progress < 80) {
-      toast.info("Please complete at least 80% of the current slide before moving forward");
+      console.log(
+        "[SlidePlayer] Blocked: progress",
+        progress,
+        "canAdvance",
+        canAdvance
+      );
+      toast.info(
+        "Please complete at least 80% of the current slide before moving forward"
+      );
       return;
     }
-    
-    if (index < slideExplanations.length) {
-      onSlideChange(index);
-    }
+    // If we can advance, allow navigation
+    console.log("[SlidePlayer] Navigating to future slide", index);
+    onSlideChange(index);
   };
-  
+
   const toggleSubtitles = () => {
     setShowSubtitles(!showSubtitles);
   };
 
   const handleComplete = async () => {
     try {
-      const tenantId = localStorage.getItem('tenantId');
-
-      console.log('Parameters check:', {
-        courseId,
-        tenantId,
-        searchParams: Object.fromEntries(searchParams.entries())
-      });
-
+      const tenantId = localStorage.getItem("tenantId");
       if (!courseId || !tenantId) {
-        throw new Error(`Missing required parameters. CourseId: ${courseId}, TenantId: ${tenantId}`);
+        toast.error("Missing course or tenant information");
+        return;
+      }
+      const token = localStorage.getItem("token");
+      if (!token) {
+        toast.error("No authentication token found. Please log in again.");
+        return;
       }
 
+      // Update progress first
+      const response = await fetch(
+        `${
+          import.meta.env.VITE_BACKEND_URL
+        }/api/courses/${courseId}/update-progress`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          credentials: "include",
+          body: JSON.stringify({ slideNumber: currentSlideIndex + 1 }),
+        }
+      );
+
+      if (!response.ok) {
+        const error = await response.json();
+        toast.error(error.error || "Failed to update progress");
+        return;
+      }
+
+      // Show completion modal
+      setShowCompletionModal(true);
+    } catch (err) {
+      toast.error("Failed to update progress");
+    }
+  };
+
+  const handleStartAssessment = async () => {
+    try {
+      setIsGeneratingMCQ(true);
+      const tenantId = localStorage.getItem("tenantId");
+
       // Get the material URL from localStorage
-      const storedMaterialUrl = localStorage.getItem(`course_material_${courseId}`);
+      const storedMaterialUrl = localStorage.getItem(
+        `course_material_${courseId}`
+      );
       let s3Url;
 
       if (!storedMaterialUrl) {
-        console.log('Material URL not found in localStorage, fetching from API...');
-        // If not in localStorage, fetch it
         const materialResponse = await fetch(
-          `${import.meta.env.VITE_BACKEND_URL}/api/courses/${courseId}/chatbot-material?tenantId=${tenantId}`
+          `${
+            import.meta.env.VITE_BACKEND_URL
+          }/api/courses/${courseId}/chatbot-material?tenantId=${tenantId}`
         );
 
         if (!materialResponse.ok) {
-          const errorText = await materialResponse.text();
-          console.error('Material URL fetch failed:', {
-            status: materialResponse.status,
-            statusText: materialResponse.statusText,
-            errorText
-          });
-          throw new Error(`Failed to fetch course material URL: ${materialResponse.status} ${materialResponse.statusText}`);
+          throw new Error("Failed to fetch course material URL");
         }
 
         const materialData = await materialResponse.json();
         s3Url = materialData.materialUrl;
-        
+
         if (!s3Url) {
-          throw new Error('Material URL is empty in the response');
+          throw new Error("Material URL is empty in the response");
         }
 
-        // Store it for future use
         localStorage.setItem(`course_material_${courseId}`, s3Url);
-        console.log('Stored material URL in localStorage:', s3Url);
       } else {
-        console.log('Using material URL from localStorage:', storedMaterialUrl);
         s3Url = storedMaterialUrl;
       }
 
-      // Generate MCQs using the AI service
-      console.log('Sending request to AI service with URL:', s3Url);
-      const mcqResponse = await fetch(`${import.meta.env.VITE_AI_SERVICE_URL}/generate_mcq`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          presentation_url: s3Url,
-          course_id: courseId,
-          tenant_id: tenantId
-        })
-      });
+      // Generate MCQs
+      const mcqResponse = await fetch(
+        `${import.meta.env.VITE_AI_SERVICE_URL}/generate_mcq`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            presentation_url: s3Url,
+            course_id: courseId,
+            tenant_id: tenantId,
+          }),
+        }
+      );
 
       if (!mcqResponse.ok) {
-        const errorText = await mcqResponse.text();
-        console.error('MCQ generation failed:', {
-          status: mcqResponse.status,
-          statusText: mcqResponse.statusText,
-          errorText,
-          url: `${import.meta.env.VITE_AI_SERVICE_URL}/generate_mcq`
-        });
-        throw new Error('Failed to generate MCQs');
+        throw new Error("Failed to generate MCQs");
       }
 
       const mcqData = await mcqResponse.json();
-      console.log('Generated MCQs:', mcqData);
-      
+
       if (!mcqData.mcqs || !Array.isArray(mcqData.mcqs)) {
-        throw new Error('Invalid MCQ data received');
+        throw new Error("Invalid MCQ data received");
       }
 
-      // Store MCQ data in localStorage for the quiz page
-      localStorage.setItem('currentQuiz', JSON.stringify(mcqData.mcqs));
-
-      // Call the original onComplete handler
-      await onComplete();
-
-      // Navigate to the quiz page
+      // Store MCQ data and navigate to quiz
+      localStorage.setItem("currentQuiz", JSON.stringify(mcqData.mcqs));
       window.location.href = `/dashboard/course/${courseId}/quiz?tenantId=${tenantId}`;
     } catch (error) {
-      console.error('Error preparing quiz:', error);
-      toast.error(error instanceof Error ? error.message : 'Failed to prepare quiz. Please try again.');
+      console.error("Error preparing quiz:", error);
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Failed to prepare quiz. Please try again."
+      );
+      setIsGeneratingMCQ(false);
     }
   };
 
-  // Handle skip forward/backward
-  const handleSkip = (direction: 'forward' | 'backward') => {
-    if (!currentExplanation) return;
-
-    // Show feedback
-    setShowSkipFeedback(direction);
-    setTimeout(() => setShowSkipFeedback(null), 500);
-
-    // Calculate current position
-    const totalLength = currentExplanation.length;
-    const currentPosition = (progress / 100) * totalLength;
-    const wordsPerSecond = 25; // Average words per second
-    const currentTimeInSeconds = currentPosition / wordsPerSecond;
-    
-    // Calculate new position (10 seconds worth of text)
-    const skipSeconds = direction === 'forward' ? 10 : -10;
-    const newTimeInSeconds = Math.max(0, Math.min(currentTimeInSeconds + skipSeconds, totalLength / wordsPerSecond));
-    const newPosition = Math.floor(newTimeInSeconds * wordsPerSecond);
-    
-    // Update position and progress
-    currentPositionRef.current = newPosition;
-    const newProgress = (newPosition / totalLength) * 100;
-    setProgress(newProgress);
-    
-    if (isPlaying) {
-      // Create new utterance with remaining text
-      const remainingText = currentExplanation.slice(newPosition);
-      const newUtterance = new SpeechSynthesisUtterance(remainingText);
-      
-      // Set properties
-      newUtterance.rate = playbackRate;
-      newUtterance.volume = isMuted ? 0 : volume / 100;
-      
-      // Set up event listeners
-      newUtterance.onstart = () => {
-        setIsPlaying(true);
-        startProgressTimer();
-      };
-      
-      newUtterance.onend = () => {
-        setIsPlaying(false);
-        setProgress(100);
-        setCanAdvance(true);
-        if (progressTimerRef.current) {
-          window.clearInterval(progressTimerRef.current);
-        }
-      };
-      
-      newUtterance.onpause = () => {
-        setIsPlaying(false);
-      };
-      
-      newUtterance.onresume = () => {
-        setIsPlaying(true);
-      };
-      
-      // Cancel current speech and start new one
-      window.speechSynthesis.cancel();
-      utteranceRef.current = newUtterance;
-      window.speechSynthesis.speak(newUtterance);
+  const handlePrev = () => {
+    if (currentSlideIndex > 0) {
+      onSlideChange(currentSlideIndex - 1);
     }
   };
 
-  // Update current subtitle based on speech position
-  useEffect(() => {
-    if (!currentExplanation || !isPlaying) return;
-
-    const updateSubtitle = () => {
-      const now = Date.now();
-      // Only update subtitle every 100ms to prevent flickering
-      if (now - lastSubtitleUpdateRef.current < 100) return;
-      lastSubtitleUpdateRef.current = now;
-
-      if (!currentUtteranceRef.current) return;
-
-      // Get the current utterance and its position
-      const utterance = currentUtteranceRef.current;
-      const totalLength = utterance.text.length;
-      const currentPosition = 0;
-      
-      // Split into sentences and find current position
-      const sentences = utterance.text.split(/[.!?]+/).filter(s => s.trim());
-      let currentSentence = "";
-      let accumulatedLength = 0;
-      
-      for (const sentence of sentences) {
-        const sentenceLength = sentence.length + 1; // +1 for punctuation
-        if (accumulatedLength + sentenceLength > currentPosition) {
-          currentSentence = sentence.trim();
-          break;
+  const handleNext = async () => {
+    if (currentSlideIndex < slides.length - 1) {
+      try {
+        const tenantId = localStorage.getItem("tenantId");
+        if (!courseId || !tenantId) {
+          toast.error("Missing course or tenant information");
+          return;
         }
-        accumulatedLength += sentenceLength;
+        const token = localStorage.getItem("token");
+        if (!token) {
+          toast.error("No authentication token found. Please log in again.");
+          return;
+        }
+        const response = await fetch(
+          `${
+            import.meta.env.VITE_BACKEND_URL
+          }/api/courses/${courseId}/update-progress`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            credentials: "include",
+            body: JSON.stringify({ slideNumber: currentSlideIndex + 1 }),
+          }
+        );
+        if (!response.ok) {
+          const error = await response.json();
+          toast.error(error.error || "Failed to update progress");
+          return;
+        }
+        onSlideChange(currentSlideIndex + 1);
+      } catch (err) {
+        toast.error("Failed to update progress");
       }
-      
-      setCurrentSubtitle(currentSentence || utterance.text);
-    };
+    }
+  };
 
-    const interval = setInterval(updateSubtitle, 50);
-    return () => clearInterval(interval);
-  }, [currentExplanation, isPlaying]);
+  if (isGeneratingMCQ) {
+    return (
+      <div className="fixed inset-0 bg-white bg-opacity-80 z-50 flex items-center justify-center">
+        <Loader message="Please wait until the MCQ is generated" />
+      </div>
+    );
+  }
 
   return (
-    <div className="relative w-full h-full flex flex-col">
+    <div className="relative w-full h-screen flex flex-col overflow-hidden">
       {/* Hamburger Menu */}
       <Sheet>
         <SheetTrigger asChild>
-          <Button 
-            variant="ghost" 
+          <Button
+            variant="ghost"
             size="icon"
             className="absolute top-4 left-4 z-50 bg-white/10 hover:bg-white/20 backdrop-blur-sm"
           >
             <Menu className="h-6 w-6" />
           </Button>
         </SheetTrigger>
-        <SheetContent side="left" className="h-screen w-[300px] sm:w-[400px] p-0">
+        <SheetContent
+          side="left"
+          className="h-screen w-[300px] sm:w-[400px] p-0"
+        >
           <div className="p-6 h-full flex flex-col">
             <h2 className="text-lg font-semibold mb-4">Slide Navigation</h2>
             <SlideNavigation
               totalSlides={slideExplanations.length}
               currentSlide={currentSlideIndex}
               onSlideSelect={handleSlideSelect}
-              completedSlides={slides.map(slide => slide.completed)}
+              slideExplanations={slideExplanations}
+              progress={progress}
+              maxVisitedSlide={maxVisitedSlide}
             />
           </div>
         </SheetContent>
@@ -720,61 +661,125 @@ const SlidePlayer = ({
 
       <div className="flex-grow relative">
         {materialUrl ? (
-          <div 
+          <div
             className="relative aspect-video w-full overflow-hidden rounded-lg bg-gray-100 dark:bg-gray-800"
             onMouseEnter={() => setShowOverlayControls(true)}
             onMouseLeave={() => setShowOverlayControls(false)}
           >
-            <GoogleSlidesViewer 
-              materialUrl={materialUrl} 
+            <GoogleSlidesViewer
+              materialUrl={materialUrl}
               currentSlideIndex={currentSlideIndex}
               onSlideChange={onSlideChange}
             />
-            
+            {/* Subtitles at bottom of PPT */}
+            {showSubtitles && currentSubtitle && (
+              <div
+                className="absolute bottom-0 left-0 w-full bg-black/50 text-white px-4 py-2 text-sm text-center"
+                style={{ pointerEvents: "none" }}
+              >
+                {currentSubtitle}
+              </div>
+            )}
             {/* Overlay Play/Pause Button */}
-            <div 
+            <div
               className={`absolute inset-0 flex items-center justify-center transition-opacity duration-300 ${
-                showOverlayControls ? 'opacity-100' : 'opacity-0'
+                showOverlayControls ? "opacity-100" : "opacity-0"
               }`}
               onClick={togglePlayback}
             >
-              <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" />
-              <button 
-                className="relative z-10 w-16 h-16 rounded-full bg-white/90 dark:bg-gray-800/90 flex items-center justify-center hover:scale-110 transition-transform duration-200"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  togglePlayback();
-                }}
-              >
-                {isPlaying ? (
-                  <svg 
-                    className="w-8 h-8 text-gray-800 dark:text-white" 
-                    fill="currentColor" 
-                    viewBox="0 0 24 24"
+              <div className="absolute inset-0 bg-black/30" />
+              <div className="relative z-10 flex items-center gap-8">
+                {properties?.skippable && (
+                  <button
+                    className="w-12 h-12 rounded-full bg-white/90 dark:bg-gray-800/90 flex items-center justify-center hover:scale-110 transition-transform duration-200"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleSkip("backward");
+                    }}
                   >
-                    <path d="M6 4h4v16H6zm8 0h4v16h-4z" />
-                  </svg>
-                ) : (
-                  <svg 
-                    className="w-8 h-8 text-gray-800 dark:text-white" 
-                    fill="currentColor" 
-                    viewBox="0 0 24 24"
-                  >
-                    <path d="M8 5v14l11-7z" />
-                  </svg>
+                    <span className="text-2xl font-bold text-gray-800 dark:text-white">
+                      {"<<"}
+                    </span>
+                  </button>
                 )}
-              </button>
+                <button
+                  className="w-16 h-16 rounded-full bg-white/90 dark:bg-gray-800/90 flex items-center justify-center hover:scale-110 transition-transform duration-200"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    togglePlayback();
+                  }}
+                >
+                  {isPlaying ? (
+                    <svg
+                      className="w-8 h-8 text-gray-800 dark:text-white"
+                      fill="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path d="M6 4h4v16H6zm8 0h4v16h-4z" />
+                    </svg>
+                  ) : (
+                    <svg
+                      className="w-8 h-8 text-gray-800 dark:text-white"
+                      fill="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path d="M8 5v14l11-7z" />
+                    </svg>
+                  )}
+                </button>
+                {properties?.skippable && (
+                  <button
+                    className="w-12 h-12 rounded-full bg-white/90 dark:bg-gray-800/90 flex items-center justify-center hover:scale-110 transition-transform duration-200"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleSkip("forward");
+                    }}
+                  >
+                    <span className="text-2xl font-bold text-gray-800 dark:text-white">
+                      {">>"}
+                    </span>
+                  </button>
+                )}
+              </div>
             </div>
-
+            {/* Skip Feedback Overlay */}
             {showSkipFeedback && (
-              <div className={`absolute inset-0 flex items-center justify-center bg-black/50 transition-opacity duration-300 ${
-                showSkipFeedback === 'forward' ? 'translate-x-1/4' : '-translate-x-1/4'
-              }`}>
-                <span className="text-white text-2xl font-bold">
-                  {showSkipFeedback === 'forward' ? '⏩ +10s' : '⏪ -10s'}
-                </span>
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-40">
+                <div
+                  className="px-8 py-4 rounded-xl text-3xl font-bold shadow-lg bg-black/80 text-white animate-fade-in-up"
+                  style={{ opacity: 0.9 }}
+                >
+                  {showSkipFeedback === "forward" ? "+5s ⏩" : "-5s ⏪"}
+                </div>
               </div>
             )}
+            {/* Audio Seekbar */}
+            <div
+              className="absolute bottom-0 left-0 right-0 h-2 bg-gray-200 dark:bg-gray-700 cursor-pointer"
+              onClick={(e) => {
+                if (!audioRef.current) return;
+                const rect = e.currentTarget.getBoundingClientRect();
+                const percent = Math.max(
+                  0,
+                  Math.min(1, (e.clientX - rect.left) / rect.width)
+                );
+                const newTime = percent * audioRef.current.duration;
+
+                // Only allow seeking backward
+                if (newTime < audioRef.current.currentTime) {
+                  audioRef.current.currentTime = newTime;
+                  setProgress(percent * 100);
+                }
+              }}
+            >
+              <div
+                className="h-full bg-blue-500 dark:bg-blue-400 relative"
+                style={{ width: `${progress}%` }}
+              >
+                {/* Seekbar handle */}
+                <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-blue-600 dark:bg-blue-300 shadow-lg transform -translate-x-1/2 hover:scale-125 transition-transform" />
+              </div>
+            </div>
           </div>
         ) : (
           <div className="w-full h-full flex items-center justify-center">
@@ -783,37 +788,33 @@ const SlidePlayer = ({
         )}
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4">
-        {/* Subtitles */}
-        {showSubtitles && currentSubtitle && (
-          <div 
-            ref={subtitleRef}
-            className="absolute bottom-4 left-1/2 transform -translate-x-1/2 px-3 py-1.5 rounded bg-black/80"
-          >
-            <p className="text-white text-center text-sm max-w-2xl">
-              {currentSubtitle}
-            </p>
-          </div>
-        )}
-      </div>
-
-      <div className="p-4 border-t dark:border-gray-700">
-        <div className="flex items-center justify-between mb-4">
+      <div className="p-4 border-t dark:border-gray-700 bg-white dark:bg-gray-900">
+        <div className="flex items-center justify-between mb-2">
           <div className="flex items-center space-x-4">
-            <Avatar className="h-10 w-10">
+            <Avatar className="h-8 w-8">
               <AvatarImage src="/avatars/presenter.png" />
               <AvatarFallback>PR</AvatarFallback>
             </Avatar>
             <div>
-              <h3 className="font-semibold">Slide {currentSlideIndex + 1} of {slideExplanations.length}</h3>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
+              <h3 className="text-sm font-semibold">
+                Slide {currentSlideIndex + 1} of {slideExplanations.length}
+              </h3>
+              <p className="text-xs text-gray-500 dark:text-gray-400">
                 {Math.round(progress)}% Complete
               </p>
             </div>
           </div>
+          {isLastSlide && progress >= 80 && (
+            <Button
+              onClick={handleComplete}
+              className="bg-green-600 hover:bg-green-700 text-white"
+            >
+              Complete Course
+            </Button>
+          )}
         </div>
 
-        <div className="space-y-4">
+        <div className="space-y-2">
           <SlideControls
             isPlaying={isPlaying}
             volume={volume}
@@ -837,9 +838,40 @@ const SlidePlayer = ({
           />
         </div>
       </div>
+
+      {/* Completion Modal */}
+      <Dialog open={showCompletionModal} onOpenChange={setShowCompletionModal}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-bold text-center">
+              Course Completed!
+            </DialogTitle>
+            <DialogDescription className="text-center mt-2">
+              Congratulations on completing the course! To ensure you've
+              understood the material, please take a short assessment test.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="mt-6 flex justify-center">
+            {isGeneratingMCQ ? (
+              <div className="flex flex-col items-center gap-4">
+                <Loader className="w-8 h-8" />
+                <p className="text-sm text-gray-500">
+                  Preparing your assessment...
+                </p>
+              </div>
+            ) : (
+              <Button
+                onClick={handleStartAssessment}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-8"
+              >
+                Start Assessment
+              </Button>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
 
 export default SlidePlayer;
-

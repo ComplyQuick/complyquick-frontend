@@ -128,26 +128,37 @@ const SlideControls: React.FC<SlideControlsProps> = ({
           </div>
         </div>
 
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center space-x-4">
+          {/* Playback Speed Dropdown */}
+          <div className="relative flex items-center">
+            <span className="mr-2 text-xs text-gray-500">Speed</span>
+            <div className="relative">
           <select
             value={playbackRate}
             onChange={(e) => changePlaybackRate(Number(e.target.value))}
-            className="bg-transparent border rounded px-2 py-1 text-sm"
+                className="appearance-none bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded px-3 py-1 text-sm font-medium shadow focus:outline-none focus:ring-2 focus:ring-blue-500 transition w-20 pr-6"
+                style={{ minWidth: '60px' }}
           >
             <option value={0.5}>0.5x</option>
             <option value={1}>1x</option>
             <option value={1.5}>1.5x</option>
             <option value={2}>2x</option>
           </select>
-
+              <span className="pointer-events-none absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400">
+                ▼
+              </span>
+            </div>
+          </div>
+          {/* Subtitle Toggle */}
           <Button
             variant="ghost"
             size="icon"
             onClick={toggleSubtitles}
+            aria-label="Toggle Subtitles"
           >
-            <Subtitles className={`h-4 w-4 ${showSubtitles ? 'text-blue-500' : ''}`} />
+            <Subtitles className={`h-5 w-5 ${showSubtitles ? 'text-blue-500' : ''}`} />
           </Button>
-
+          {/* Complete Button */}
           {isLastSlide && progress >= 100 && (
             <Button
               variant="default"
