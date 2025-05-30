@@ -32,6 +32,7 @@ interface CourseCardProps {
   learningObjectives?: string;
   onClick?: () => void;
   onTakeQuiz?: () => void;
+  canRetakeQuiz?: boolean;
 }
 
 const CourseCard = ({
@@ -50,6 +51,7 @@ const CourseCard = ({
   learningObjectives = "",
   onClick,
   onTakeQuiz,
+  canRetakeQuiz = false,
 }: CourseCardProps) => {
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [showCardOverlay, setShowCardOverlay] = useState(false);
@@ -172,7 +174,7 @@ const CourseCard = ({
         <CardFooter className="flex justify-end px-6 pb-6 pt-4 bg-transparent border-none gap-2">
           {userRole === "employee" ? (
             <>
-              {progress === 100 && onTakeQuiz && (
+              {progress === 100 && onTakeQuiz && canRetakeQuiz && (
                 <Button
                   onClick={(e) => {
                     e.stopPropagation();

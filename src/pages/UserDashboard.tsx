@@ -559,6 +559,7 @@ const UserDashboard = () => {
                     const canDownloadCertificate =
                       userCourse?.canDownloadCertificate;
                     const certificateUrl = userCourse?.certificateUrl;
+                    const canRetakeQuiz = userCourse?.canRetakeQuiz;
 
                     return (
                       <div key={course.id} className="relative">
@@ -611,6 +612,7 @@ const UserDashboard = () => {
                           }
                           properties={course.properties}
                           onClick={() => handleCourseSelect(course.id)}
+                          canRetakeQuiz={canRetakeQuiz}
                           onTakeQuiz={
                             isCompleted
                               ? async () => {
