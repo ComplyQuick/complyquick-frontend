@@ -563,37 +563,6 @@ const UserDashboard = () => {
 
                     return (
                       <div key={course.id} className="relative">
-                        {/* Download Certificate Icon */}
-                        {canDownloadCertificate && certificateUrl && (
-                          <button
-                            className="absolute top-2 right-2 z-10"
-                            title="Download Certificate"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              // Extract file ID from Google Drive URL
-                              const match =
-                                certificateUrl.match(/\/d\/([\w-]+)/);
-                              const fileId = match ? match[1] : null;
-                              if (!fileId) {
-                                console.error("Invalid Google Drive URL");
-                                return;
-                              }
-                              const directUrl = `https://drive.google.com/uc?export=download&id=${fileId}`;
-                              // Create a temporary <a> and trigger download
-                              const a = document.createElement("a");
-                              a.href = directUrl;
-                              a.download = `certificate-${course.title.replace(
-                                /[^a-z0-9]/gi,
-                                "_"
-                              )}.png`;
-                              document.body.appendChild(a);
-                              a.click();
-                              a.remove();
-                            }}
-                          >
-                            <Download className="w-6 h-6 text-green-400" />
-                          </button>
-                        )}
                         <CourseCard
                           id={course.id}
                           title={course.title}
@@ -717,6 +686,8 @@ const UserDashboard = () => {
                                 }
                               : undefined
                           }
+                          canDownloadCertificate={canDownloadCertificate}
+                          certificateUrl={certificateUrl}
                         />
                       </div>
                     );

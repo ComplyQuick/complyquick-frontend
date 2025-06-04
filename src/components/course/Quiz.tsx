@@ -1,11 +1,14 @@
-import { useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import { Card } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Label } from '@/components/ui/label';
-import { toast } from 'sonner';
-import { Lightbulb } from 'lucide-react';
+import { useState, useEffect, useRef } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label";
+import { toast } from "sonner";
+import { Lightbulb, AlertTriangle } from "lucide-react";
+import ProctorRecorder, {
+  ProctorRecorderHandle,
+} from "@/components/quiz/ProctorRecorder";
 
 interface MCQ {
   question: string;
@@ -25,29 +28,84 @@ const Quiz = () => {
   const [answers, setAnswers] = useState<Record<number, string>>({});
   const [hintsUsed, setHintsUsed] = useState<Record<number, boolean>>({});
   const [showHint, setShowHint] = useState(false);
+  const [violations, setViolations] = useState<string[]>([]);
+  const [videoBlob, setVideoBlob] = useState<Blob | null>(null);
+  const [violationMessage, setViolationMessage] = useState<string | null>(null);
+  const [toasts, setToasts] = useState<{ id: number; message: string }[]>([]);
   const navigate = useNavigate();
   const { courseId } = useParams();
+  const proctorRef = useRef<ProctorRecorderHandle>(null);
+  let toastId = 0;
 
   useEffect(() => {
     // Load MCQs from localStorage
-    const savedMcqs = localStorage.getItem('currentQuiz');
+    const savedMcqs = localStorage.getItem("currentQuiz");
     if (savedMcqs) {
       const parsedMcqs = JSON.parse(savedMcqs);
-      console.log('Loaded MCQs:', parsedMcqs);
+      console.log("Loaded MCQs:", parsedMcqs);
       setMcqs(parsedMcqs);
     } else {
-      toast.error('Quiz data not found');
+      toast.error("Quiz data not found");
       navigate(`/course/${courseId}`);
     }
+    // Clean up on unmount
+    // return () => {
+    //   proctorRef.current?.stop();
+    // };
   }, [courseId, navigate]);
 
+  // Start proctoring after ref is set
+  // useEffect(() => {
+  //   if (proctorRef.current) {
+  //     console.log("[Quiz] Calling proctorRef.current.start()");
+  //     proctorRef.current.start();
+  //   }
+  // }, [proctorRef.current]);
+
+  const handleViolation = (type: string) => {
+    setViolations((prev) => [...prev, type]);
+    let message = "";
+    switch (type) {
+      case "no_face":
+        message = "No face detected. Please stay in front of the camera.";
+        break;
+      case "multiple_faces":
+        message = "Multiple faces detected. Only one person should be present.";
+        break;
+      case "gaze_away":
+        message =
+          "You appear to be looking away from the screen. Please focus on the quiz.";
+        break;
+      case "window_blur":
+        message = "You left the quiz window. Please stay on the quiz page.";
+        break;
+      case "tab_hidden":
+        message = "You switched tabs. Please stay on the quiz page.";
+        break;
+      case "webcam_denied":
+        message =
+          "Webcam access denied. Please allow camera access for proctoring.";
+        break;
+      default:
+        message = "Suspicious activity detected.";
+    }
+    // Add a toast
+    toastId += 1;
+    const id = toastId;
+    setToasts((prev) => [...prev, { id, message }]);
+    setTimeout(() => {
+      setToasts((prev) => prev.filter((t) => t.id !== id));
+    }, 3000);
+    console.warn("[Proctor] Violation detected:", type);
+  };
+
   const handleAnswer = (value: string) => {
-    setAnswers(prev => {
+    setAnswers((prev) => {
       const newAnswers = {
         ...prev,
-        [currentQuestion]: value
+        [currentQuestion]: value,
       };
-      console.log('Current answers:', newAnswers);
+      console.log("Current answers:", newAnswers);
       return newAnswers;
     });
     setShowHint(false);
@@ -55,70 +113,63 @@ const Quiz = () => {
 
   const handleShowHint = () => {
     if (!hintsUsed[currentQuestion]) {
-      setHintsUsed(prev => ({
+      setHintsUsed((prev) => ({
         ...prev,
-        [currentQuestion]: true
+        [currentQuestion]: true,
       }));
       setShowHint(true);
-      toast.warning('Hint used! 3 marks will be deducted for this question.');
+      toast.warning("Hint used! 3 marks will be deducted for this question.");
     }
   };
 
   const handleNext = () => {
     if (currentQuestion < mcqs.length - 1) {
-      setCurrentQuestion(prev => prev + 1);
+      setCurrentQuestion((prev) => prev + 1);
       setShowHint(false);
     }
   };
 
   const handlePrevious = () => {
     if (currentQuestion > 0) {
-      setCurrentQuestion(prev => prev - 1);
+      setCurrentQuestion((prev) => prev - 1);
       setShowHint(false);
     }
   };
 
   const handleSubmit = async () => {
     try {
-      // Ensure we have all answers
       if (Object.keys(answers).length !== mcqs.length) {
-        toast.error('Please answer all questions before submitting');
+        toast.error("Please answer all questions before submitting");
         return;
       }
-
-      console.log('Submitting quiz with answers:', answers);
-      console.log('Total MCQs:', mcqs.length);
-
+      // Stop proctoring and log video
+      // proctorRef.current?.stop();
+      // console.log("[Proctor] Violations during quiz:", violations);
+      // if (videoBlob) {
+      //   console.log("[Quiz] Proctoring video recorded:", videoBlob);
+      // } else {
+      //   console.warn("[Quiz] No proctoring video available.");
+      // }
       // Calculate results with hint penalty
       const results = mcqs.map((question, index) => {
         const isCorrect = answers[index] === question.correctAnswer;
         const usedHint = hintsUsed[index] || false;
         const score = isCorrect ? (usedHint ? 5 : 10) : 0;
-        
-        const result = {
+        return {
           question: question.question,
-          userAnswer: answers[index] || 'Not answered',
+          userAnswer: answers[index] || "Not answered",
           correctAnswer: question.correctAnswer,
           isCorrect,
           usedHint,
-          score
+          score,
         };
-        console.log(`Question ${index + 1} result:`, result);
-        return result;
       });
-
-      console.log('Final results:', results);
-
-      // Store results in localStorage
-      localStorage.setItem('quizResults', JSON.stringify(results));
-      // Store courseId for results page fallback
-      localStorage.setItem('lastQuizCourseId', courseId || '');
-
-      // Navigate to results page
-      navigate('/quiz-results');
+      localStorage.setItem("quizResults", JSON.stringify(results));
+      localStorage.setItem("lastQuizCourseId", courseId || "");
+      navigate("/quiz-results");
     } catch (error) {
-      console.error('Error submitting quiz:', error);
-      toast.error('Failed to submit quiz. Please try again.');
+      console.error("Error submitting quiz:", error);
+      toast.error("Failed to submit quiz. Please try again.");
     }
   };
 
@@ -128,7 +179,9 @@ const Quiz = () => {
         <Card className="max-w-3xl mx-auto p-6">
           <div className="text-center">
             <h2 className="text-xl font-semibold mb-4">Loading quiz...</h2>
-            <p className="text-gray-500">Please wait while we prepare your questions.</p>
+            <p className="text-gray-500">
+              Please wait while we prepare your questions.
+            </p>
           </div>
         </Card>
       </div>
@@ -139,15 +192,32 @@ const Quiz = () => {
 
   return (
     <div className="container mx-auto px-4 py-8">
+      {/* Toasts */}
+      <div className="fixed top-4 right-4 z-50 flex flex-col gap-2">
+        {toasts.map((toast) => (
+          <div
+            key={toast.id}
+            className="flex items-center gap-2 bg-red-600 text-white px-4 py-2 rounded shadow-lg animate-fade-in"
+          >
+            <AlertTriangle className="w-5 h-5 text-white" />
+            <span>{toast.message}</span>
+          </div>
+        ))}
+      </div>
       <Card className="max-w-3xl mx-auto p-6">
         <div className="mb-8">
           <h1 className="text-2xl font-bold mb-2">Assessment Quiz</h1>
-          <p className="text-gray-500">Complete the quiz with a score of at least 70% to receive your certificate.</p>
+          <p className="text-gray-500">
+            Complete the quiz with a score of at least 70% to receive your
+            certificate.
+          </p>
         </div>
 
         <div className="mb-6">
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-semibold">Question {currentQuestion + 1}</h2>
+            <h2 className="text-xl font-semibold">
+              Question {currentQuestion + 1}
+            </h2>
             <span className="text-sm text-gray-500">
               {currentQuestion + 1} of {mcqs.length} questions
             </span>
@@ -155,9 +225,9 @@ const Quiz = () => {
 
           <div className="space-y-4">
             <p className="text-lg mb-4">{currentMcq.question}</p>
-            
+
             <RadioGroup
-              value={answers[currentQuestion] || ''}
+              value={answers[currentQuestion] || ""}
               onValueChange={handleAnswer}
               className="space-y-3"
             >
@@ -200,10 +270,7 @@ const Quiz = () => {
           </Button>
 
           {currentQuestion < mcqs.length - 1 ? (
-            <Button
-              onClick={handleNext}
-              disabled={!answers[currentQuestion]}
-            >
+            <Button onClick={handleNext} disabled={!answers[currentQuestion]}>
               Next
             </Button>
           ) : (
@@ -223,17 +290,23 @@ const Quiz = () => {
               <div
                 key={index}
                 className={`w-3 h-3 rounded-full ${
-                  answers[index]
-                    ? 'bg-blue-500'
-                    : 'bg-gray-300'
+                  answers[index] ? "bg-blue-500" : "bg-gray-300"
                 }`}
               />
             ))}
           </div>
         </div>
       </Card>
+      {/* Proctoring component */}
+      {/* <ProctorRecorder
+        ref={proctorRef}
+        onRecordingComplete={(blob) => {
+          setVideoBlob(blob);
+        }}
+        onViolation={handleViolation}
+      /> */}
     </div>
   );
 };
 
-export default Quiz; 
+export default Quiz;

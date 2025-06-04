@@ -1,21 +1,27 @@
-import { jwtDecode } from 'jwt-decode';
+import { jwtDecode } from "jwt-decode";
 
 const FOLDER_ID = import.meta.env.VITE_GOOGLE_DRIVE_FOLDER_ID;
 const REFRESH_TOKEN = import.meta.env.VITE_GOOGLE_DRIVE_REFRESH_TOKEN;
 const CLIENT_ID = import.meta.env.VITE_GOOGLE_DRIVE_CLIENT_ID;
 const CLIENT_SECRET = import.meta.env.VITE_GOOGLE_DRIVE_CLIENT_SECRET;
+const REDIRECT_URI = import.meta.env.VITE_GOOGLE_DRIVE_REDIRECT_URI;
+
+console.log("client_id", CLIENT_ID);
+console.log("client_secret", CLIENT_SECRET);
+console.log("refresh_token", REFRESH_TOKEN);
+console.log("redirect_uri", REDIRECT_URI);
 
 async function getAccessToken() {
-  const response = await fetch('https://oauth2.googleapis.com/token', {
-    method: 'POST',
+  const response = await fetch("https://oauth2.googleapis.com/token", {
+    method: "POST",
     headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
+      "Content-Type": "application/x-www-form-urlencoded",
     },
     body: new URLSearchParams({
       client_id: CLIENT_ID,
       client_secret: CLIENT_SECRET,
       refresh_token: REFRESH_TOKEN,
-      grant_type: 'refresh_token',
+      grant_type: "refresh_token",
     }),
   });
 
@@ -23,7 +29,10 @@ async function getAccessToken() {
   return data.access_token;
 }
 
-export const uploadCertificateToDrive = async (certificateBuffer: ArrayBuffer, fileName: string) => {
+export const uploadCertificateToDrive = async (
+  certificateBuffer: ArrayBuffer,
+  fileName: string
+) => {
   try {
     const accessToken = await getAccessToken();
 
@@ -31,14 +40,14 @@ export const uploadCertificateToDrive = async (certificateBuffer: ArrayBuffer, f
     const metadata = {
       name: fileName,
       parents: [FOLDER_ID],
-      mimeType: 'image/png',
+      mimeType: "image/png",
     };
 
     // Create the file
     const createResponse = await fetch(
       `https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart`,
       {
-        method: 'POST',
+        method: "POST",
         headers: {
           Authorization: `Bearer ${accessToken}`,
         },
@@ -53,31 +62,31 @@ export const uploadCertificateToDrive = async (certificateBuffer: ArrayBuffer, f
     const uploadResponse = await fetch(
       `https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=media`,
       {
-        method: 'PATCH',
+        method: "PATCH",
         headers: {
           Authorization: `Bearer ${accessToken}`,
-          'Content-Type': 'image/png',
+          "Content-Type": "image/png",
         },
         body: certificateBuffer,
       }
     );
 
     if (!uploadResponse.ok) {
-      throw new Error('Failed to upload file content');
+      throw new Error("Failed to upload file content");
     }
 
     // Set file permission so anyone with the link can view
     await fetch(
       `https://www.googleapis.com/drive/v3/files/${fileId}/permissions`,
       {
-        method: 'POST',
+        method: "POST",
         headers: {
           Authorization: `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          role: 'reader',
-          type: 'anyone',
+          role: "reader",
+          type: "anyone",
         }),
       }
     );
@@ -93,10 +102,13 @@ export const uploadCertificateToDrive = async (certificateBuffer: ArrayBuffer, f
     );
 
     const fileInfo = await fileResponse.json();
-    console.log('Certificate uploaded successfully. URL:', fileInfo.webViewLink);
+    console.log(
+      "Certificate uploaded successfully. URL:",
+      fileInfo.webViewLink
+    );
     return fileInfo.webViewLink;
   } catch (error) {
-    console.error('Error uploading certificate to Google Drive:', error);
+    console.error("Error uploading certificate to Google Drive:", error);
     throw error;
   }
-}; 
+};

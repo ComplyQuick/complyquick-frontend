@@ -7,10 +7,23 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import CourseDetailsModal from "./CourseDetailsModal";
-import { Users } from "lucide-react";
+import { Users, MessageCircle, Award } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import GeneralChatbot from "../course/GeneralChatbot";
 
 interface CourseCardProps {
   id: string;
@@ -33,6 +46,8 @@ interface CourseCardProps {
   onClick?: () => void;
   onTakeQuiz?: () => void;
   canRetakeQuiz?: boolean;
+  canDownloadCertificate?: boolean;
+  certificateUrl?: string;
 }
 
 const CourseCard = ({
@@ -52,9 +67,13 @@ const CourseCard = ({
   onClick,
   onTakeQuiz,
   canRetakeQuiz = false,
+  canDownloadCertificate = false,
+  certificateUrl = "",
 }: CourseCardProps) => {
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [showCardOverlay, setShowCardOverlay] = useState(false);
+  const [isChatbotOpen, setIsChatbotOpen] = useState(false);
+  const navigate = useNavigate();
 
   const defaultProperties = {
     mandatory: true,
@@ -93,6 +112,30 @@ const CourseCard = ({
       ? "bg-[#1746FF] text-white hover:bg-[#1746FF]/90"
       : "border border-white text-white bg-transparent hover:bg-white/10";
 
+  const handleChatbotClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsChatbotOpen(true);
+  };
+
+  // Download certificate handler
+  const handleCertificateDownload = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!certificateUrl) return;
+    const match = certificateUrl.match(/\/d\/([\w-]+)/);
+    const fileId = match ? match[1] : null;
+    if (!fileId) {
+      console.error("Invalid Google Drive URL");
+      return;
+    }
+    const directUrl = `https://drive.google.com/uc?export=download&id=${fileId}`;
+    const a = document.createElement("a");
+    a.href = directUrl;
+    a.download = `certificate-${title.replace(/[^a-z0-9]/gi, "_")}.png`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  };
+
   return (
     <>
       <Card
@@ -114,6 +157,26 @@ const CourseCard = ({
         {userRole === "employee" && showCardOverlay && (
           <div className="absolute inset-0 z-20 pointer-events-none animate-pulse bg-white/10 rounded-2xl transition-all duration-300" />
         )}
+
+        {/* Chatbot Icon for employee role */}
+        {userRole === "employee" && (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={handleChatbotClick}
+                  className="absolute bottom-4 left-4 z-30 p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
+                >
+                  <MessageCircle className="h-4 w-4 text-white" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Ask away</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        )}
+
         <div className={`px-6 pt-5 pb-3 ${headerGradient}`}>
           <CardTitle
             className={`${titleColor} text-xl font-semibold flex items-center gap-1`}
@@ -135,21 +198,54 @@ const CourseCard = ({
                   {progress}%
                 </span>
               </div>
-              <Progress
-                value={progress}
-                className="h-2 bg-[#232B41]"
-                indicatorClassName={`rounded-full ${
-                  isMandatory ? "" : "bg-[#3D60B2]"
-                }`}
-                indicatorStyle={
-                  isMandatory
-                    ? {
-                        background:
-                          "linear-gradient(93deg, #A80000 -30%, #5779C9 60%)",
-                      }
-                    : undefined
-                }
-              />
+              <div className="flex items-center gap-2">
+                <Progress
+                  value={progress}
+                  className="h-2 bg-[#232B41] flex-1 min-w-0"
+                  style={{
+                    width:
+                      canDownloadCertificate && certificateUrl
+                        ? "calc(100% - 32px)"
+                        : "100%",
+                  }}
+                  indicatorClassName={`rounded-full ${
+                    isMandatory ? "" : "bg-[#3D60B2]"
+                  }`}
+                  indicatorStyle={
+                    isMandatory
+                      ? {
+                          background:
+                            "linear-gradient(93deg, #A80000 -30%, #5779C9 60%)",
+                        }
+                      : undefined
+                  }
+                />
+                {canDownloadCertificate && certificateUrl && (
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          onClick={handleCertificateDownload}
+                          className="p-1 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
+                        >
+                          <Award className="h-5 w-5 text-green-400" />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent
+                        side="top"
+                        align="center"
+                        className="max-w-xs text-xs px-2 py-1"
+                      >
+                        <p>
+                          Download
+                          <br />
+                          certificate
+                        </p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                )}
+              </div>
             </div>
           ) : (
             <div className="space-y-2">
@@ -232,6 +328,24 @@ const CourseCard = ({
           properties: courseProperties,
         }}
       />
+
+      {/* Chatbot Dialog */}
+      <Dialog open={isChatbotOpen} onOpenChange={setIsChatbotOpen}>
+        <DialogContent className="DialogContent max-w-4xl h-[80vh]">
+          <style>{`
+            .DialogContent > button,
+            .DialogContent [data-dialog-close] {
+              display: none !important;
+            }
+          `}</style>
+          <GeneralChatbot
+            tenantId={tenantId}
+            initialCourseId={id}
+            hideCourseSelector={true}
+            onClose={() => setIsChatbotOpen(false)}
+          />
+        </DialogContent>
+      </Dialog>
     </>
   );
 };
