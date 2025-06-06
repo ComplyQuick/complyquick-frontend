@@ -152,7 +152,6 @@ const ChatHelp = ({ slideTitle, slideContent, tenantId }: ChatHelpProps) => {
         }
       } catch (error) {
         console.error("Error fetching required data:", error);
-        toast.error("Failed to load chat data");
       }
     };
 

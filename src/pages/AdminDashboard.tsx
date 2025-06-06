@@ -122,6 +122,9 @@ const AdminDashboard = () => {
   const [pocs, setPocs] = useState<
     { role: string; name: string; contact: string }[]
   >([{ role: "", name: "", contact: "" }]);
+  const [courseView, setCourseView] = useState<"active" | "inactive">("active");
+  const [activeCourses, setActiveCourses] = useState<Course[]>([]);
+  const [inactiveCourses, setInactiveCourses] = useState<Course[]>([]);
 
   useEffect(() => {
     const storedTenantId = localStorage.getItem("tenantId");
@@ -447,6 +450,38 @@ const AdminDashboard = () => {
     (user: any) => !user.enrollments || user.enrollments.length === 0
   ).length;
 
+  // Fetch active/inactive courses when tenantId or courseView changes
+  useEffect(() => {
+    if (!tenantId) return;
+    const fetchCoursesByStatus = async () => {
+      const token = localStorage.getItem("token");
+      if (!token) return;
+      const url =
+        courseView === "active"
+          ? `${
+              import.meta.env.VITE_BACKEND_URL
+            }/api/tenant-admin/tenants/${tenantId}/courses/enabled`
+          : `${
+              import.meta.env.VITE_BACKEND_URL
+            }/api/tenant-admin/tenants/${tenantId}/courses/disabled`;
+      try {
+        const response = await fetch(url, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        });
+        if (!response.ok) throw new Error("Failed to fetch courses");
+        const data = await response.json();
+        if (courseView === "active") setActiveCourses(data);
+        else setInactiveCourses(data);
+      } catch (e) {
+        // Optionally handle error
+      }
+    };
+    fetchCoursesByStatus();
+  }, [tenantId, courseView]);
+
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-background to-muted/30">
       <Navbar userRole="admin" />
@@ -636,7 +671,34 @@ const AdminDashboard = () => {
               </Card>
 
               <div className="mt-8 animate-fade-in flex items-center justify-between mb-4">
-                <h3 className="text-lg font-medium mb-0">Active Courses</h3>
+                <div className="flex items-center gap-4">
+                  <h3 className="text-lg font-medium mb-0">Courses</h3>
+                  <span className="flex items-center gap-2 ml-4">
+                    <span
+                      className={`cursor-pointer select-none transition-colors ${
+                        courseView === "active"
+                          ? "text-gray-900 dark:text-white font-semibold"
+                          : "text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+                      }`}
+                      onClick={() => setCourseView("active")}
+                      style={{ opacity: courseView === "active" ? 1 : 0.5 }}
+                    >
+                      Active Courses
+                    </span>
+                    <span className="mx-2 text-gray-400">|</span>
+                    <span
+                      className={`cursor-pointer select-none transition-colors ${
+                        courseView === "inactive"
+                          ? "text-gray-900 dark:text-white font-semibold"
+                          : "text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+                      }`}
+                      onClick={() => setCourseView("inactive")}
+                      style={{ opacity: courseView === "inactive" ? 1 : 0.5 }}
+                    >
+                      Inactive Courses
+                    </span>
+                  </span>
+                </div>
                 <Button
                   onClick={() => setIsAddCourseDialogOpen(true)}
                   className="bg-complybrand-700 hover:bg-complybrand-800 text-white px-3 py-1 rounded-full text-xs shadow-sm flex items-center"
@@ -645,22 +707,27 @@ const AdminDashboard = () => {
                 </Button>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {courses.map((course) => (
+                {(courseView === "active"
+                  ? activeCourses
+                  : inactiveCourses
+                ).map((item) => (
                   <CourseCard
-                    key={course.id}
-                    id={course.id}
-                    title={course.title}
-                    description={course.description}
-                    duration={course.duration}
-                    enrolledCount={course.enrolledUsers}
+                    key={item.id}
+                    id={item.id}
+                    courseId={item.courseId}
+                    title={item.title}
+                    description={item.description}
+                    duration={item.duration || ""}
+                    enrolledUsers={item.enrolledUsers}
                     userRole="admin"
                     tenantId={tenantId || ""}
                     token={localStorage.getItem("token") || ""}
-                    learningObjectives={course.learningObjectives}
+                    learningObjectives={item.learningObjectives || ""}
                     properties={{
-                      mandatory: course.mandatory,
-                      skippable: course.skippable,
-                      retryType: course.retryType,
+                      mandatory: item.mandatory,
+                      skippable: item.skippable,
+                      retryType: item.retryType,
+                      isEnabled: item.isEnabled,
                     }}
                   />
                 ))}

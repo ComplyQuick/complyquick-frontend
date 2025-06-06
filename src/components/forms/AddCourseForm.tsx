@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
@@ -22,7 +22,13 @@ import {
 } from "@/components/ui/form";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 
 // Define the form schema with validations
@@ -30,7 +36,9 @@ const courseFormSchema = z.object({
   title: z.string().min(2, { message: "Title is required" }),
   description: z.string().min(10, { message: "Description is required" }),
   tags: z.string().min(1, { message: "Tags are required" }),
-  learningObjectives: z.string().min(1, { message: "Learning objectives are required" }),
+  learningObjectives: z
+    .string()
+    .min(1, { message: "Learning objectives are required" }),
   courseMaterial: z.any().refine((file) => file instanceof File, {
     message: "Course material is required",
   }),
@@ -42,55 +50,131 @@ interface AddCourseFormProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onCourseCreated?: () => void;
+  mode?: "add" | "update";
+  course?: any;
 }
 
 const AddCourseForm: React.FC<AddCourseFormProps> = ({
   open,
   onOpenChange,
   onCourseCreated,
+  mode = "add",
+  course,
 }) => {
   const [isLoading, setIsLoading] = useState(false);
 
+  // If update mode, prefill fields
   const form = useForm<CourseFormValues>({
-    resolver: zodResolver(courseFormSchema),
-    defaultValues: {
-      title: "",
-      description: "",
-      tags: "",
-      learningObjectives: "",
-      courseMaterial: null,
-    },
+    resolver: zodResolver(
+      mode === "update"
+        ? courseFormSchema.extend({
+            courseMaterial: z.any().optional(),
+          })
+        : courseFormSchema
+    ),
+    defaultValues:
+      mode === "update" && course
+        ? {
+            title: course.title || "",
+            description: course.description || "",
+            tags: Array.isArray(course.tags)
+              ? course.tags.join(", ")
+              : course.tags || "",
+            learningObjectives: Array.isArray(course.learningObjectives)
+              ? course.learningObjectives.join(", ")
+              : course.learningObjectives || "",
+            courseMaterial: null,
+          }
+        : {
+            title: "",
+            description: "",
+            tags: "",
+            learningObjectives: "",
+            courseMaterial: null,
+          },
   });
+
+  useEffect(() => {
+    if (mode === "update" && course) {
+      form.reset({
+        title: course.title || "",
+        description: course.description || "",
+        tags: Array.isArray(course.tags)
+          ? course.tags.join(", ")
+          : course.tags || "",
+        learningObjectives: Array.isArray(course.learningObjectives)
+          ? course.learningObjectives.join(", ")
+          : course.learningObjectives || "",
+        courseMaterial: null,
+      });
+    } else if (mode === "add") {
+      form.reset({
+        title: "",
+        description: "",
+        tags: "",
+        learningObjectives: "",
+        courseMaterial: null,
+      });
+    }
+  }, [mode, course, form]);
 
   async function onSubmit(data: CourseFormValues) {
     setIsLoading(true);
     try {
       const formData = new FormData();
-      
-      // Append all form fields to FormData
-      formData.append('title', data.title);
-      formData.append('description', data.description);
-      formData.append('tags', data.tags);
-      formData.append('learningObjectives', data.learningObjectives);
-      formData.append('courseMaterial', data.courseMaterial);
+      formData.append("title", data.title);
+      formData.append("description", data.description);
+      formData.append("tags", data.tags);
+      formData.append("learningObjectives", data.learningObjectives);
+      if (data.courseMaterial) {
+        formData.append("courseMaterial", data.courseMaterial);
+      }
 
-      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/courses`, {
-        method: 'POST',
-        body: formData,
-      });
+      let response;
+      if (mode === "update" && course) {
+        response = await fetch(
+          `${import.meta.env.VITE_BACKEND_URL}/api/superadmin/course/${
+            course.id
+          }`,
+          {
+            method: "PATCH",
+            body: formData,
+          }
+        );
+      } else {
+        response = await fetch(
+          `${import.meta.env.VITE_BACKEND_URL}/api/courses`,
+          {
+            method: "POST",
+            body: formData,
+          }
+        );
+      }
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || 'Failed to create course');
+        throw new Error(
+          errorData.message ||
+            `Failed to ${mode === "update" ? "update" : "create"} course`
+        );
       }
 
-      toast.success("Course created successfully!");
+      toast.success(
+        mode === "update"
+          ? "Course updated successfully!"
+          : "Course created successfully!"
+      );
       onOpenChange(false);
       form.reset();
       onCourseCreated?.();
     } catch (error) {
-      console.error('Error creating course:', error);
-      toast.error(error instanceof Error ? error.message : "Failed to create course. Please try again.");
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : `Failed to ${
+              mode === "update" ? "update" : "create"
+            } course. Please try again.`
+      );
     } finally {
       setIsLoading(false);
     }
@@ -100,14 +184,21 @@ const AddCourseForm: React.FC<AddCourseFormProps> = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-2xl font-bold">Add New Course</DialogTitle>
+          <DialogTitle className="text-2xl font-bold">
+            {mode === "update" ? "Edit Course" : "Add New Course"}
+          </DialogTitle>
           <DialogDescription>
-            Fill in the course details and upload the course material.
+            {mode === "update"
+              ? "Edit the course details and upload new material if needed."
+              : "Fill in the course details and upload the course material."}
           </DialogDescription>
         </DialogHeader>
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8 py-4">
+          <form
+            onSubmit={form.handleSubmit(onSubmit)}
+            className="space-y-8 py-4"
+          >
             <div className="grid gap-6">
               <FormField
                 control={form.control}
@@ -148,7 +239,10 @@ const AddCourseForm: React.FC<AddCourseFormProps> = ({
                   <FormItem>
                     <FormLabel>Tags (comma-separated)</FormLabel>
                     <FormControl>
-                      <Input placeholder="e.g., compliance, training, legal" {...field} />
+                      <Input
+                        placeholder="e.g., compliance, training, legal"
+                        {...field}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -178,7 +272,7 @@ const AddCourseForm: React.FC<AddCourseFormProps> = ({
                 name="courseMaterial"
                 render={({ field: { value, onChange, ...field } }) => (
                   <FormItem>
-                    <FormLabel>Course Material (PDF or PPTX)</FormLabel>
+                    <FormLabel>Course Material (PPTX)</FormLabel>
                     <FormControl>
                       <Input
                         type="file"
@@ -207,12 +301,18 @@ const AddCourseForm: React.FC<AddCourseFormProps> = ({
               >
                 Cancel
               </Button>
-              <Button 
-                type="submit" 
+              <Button
+                type="submit"
                 className="bg-complybrand-700 hover:bg-complybrand-800"
                 disabled={isLoading}
               >
-                {isLoading ? "Creating..." : "Create Course"}
+                {isLoading
+                  ? mode === "update"
+                    ? "Updating..."
+                    : "Creating..."
+                  : mode === "update"
+                  ? "Update Course"
+                  : "Create Course"}
               </Button>
             </DialogFooter>
           </form>

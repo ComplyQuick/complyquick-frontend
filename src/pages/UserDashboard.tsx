@@ -34,16 +34,21 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Loader } from "@/components/ui/loader";
+import { useAuthStore } from "@/store/authStore";
 
-interface Course {
+interface CourseData {
   id: string;
+  courseId?: string;
   title: string;
   description: string;
   duration: string;
-  progress: number;
-  properties: {
-    mandatory: boolean;
+  skippable: boolean;
+  mandatory: boolean;
+  retryType: "DIFFERENT" | "SAME";
+  enrolledUsers: number;
+  properties?: {
     skippable: boolean;
+    mandatory: boolean;
     retryType: "DIFFERENT" | "SAME";
   };
 }
@@ -54,7 +59,7 @@ interface UserProfile {
   email: string;
 }
 
-interface CourseProgress {
+interface ProgressData {
   courseId: string;
   progress: number;
 }
@@ -63,13 +68,12 @@ const UserDashboard = () => {
   const [activeTab, setActiveTab] = useState<
     "all" | "inProgress" | "completed"
   >("all");
-  const [courses, setCourses] = useState<Course[]>([]);
+  const [courses, setCourses] = useState<CourseData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isGeneratingQuiz, setIsGeneratingQuiz] = useState(false);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [searchParams] = useSearchParams();
-  const tenantId = searchParams.get("tenantId");
-  const token = searchParams.get("token");
+  const { token, tenantId } = useAuthStore();
   const [courseProgress, setCourseProgress] = useState<Record<string, number>>(
     {}
   );
@@ -134,7 +138,7 @@ const UserDashboard = () => {
         const coursesResponse = await fetch(
           `${
             import.meta.env.VITE_BACKEND_URL
-          }/api/tenant-admin/tenants/${tenantId}/courses`,
+          }/api/tenant-admin/user/enabled-courses?tenantId=${tenantId}`,
           {
             headers: {
               Authorization: `Bearer ${token}`,
@@ -151,7 +155,7 @@ const UserDashboard = () => {
 
         const coursesData = await coursesResponse.json();
         // Map top-level fields into a properties object for UI compatibility
-        const mappedCourses = coursesData.map((course: any) => ({
+        const mappedCourses = coursesData.map((course: CourseData) => ({
           ...course,
           properties: {
             skippable: course.skippable,
@@ -162,26 +166,33 @@ const UserDashboard = () => {
         setCourses(mappedCourses);
 
         // Fetch progress for each course
-        const progressPromises = mappedCourses.map(async (course: Course) => {
-          const progressResponse = await fetch(
-            `${
-              import.meta.env.VITE_BACKEND_URL
-            }/api/courses/progress/user?userId=${userId}&courseId=${course.id}`,
-            {
-              headers: {
-                Authorization: `Bearer ${token}`,
-                "Content-Type": "application/json",
-              },
+        const progressPromises = mappedCourses.map(
+          async (course: CourseData) => {
+            const progressResponse = await fetch(
+              `${
+                import.meta.env.VITE_BACKEND_URL
+              }/api/courses/progress/user?userId=${userId}&courseId=${
+                course.id
+              }`,
+              {
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                  "Content-Type": "application/json",
+                },
+              }
+            );
+
+            if (!progressResponse.ok) {
+              return { courseId: course.id, progress: 0 };
             }
-          );
 
-          if (!progressResponse.ok) {
-            return { courseId: course.id, progress: 0 };
+            const progressData: ProgressData = await progressResponse.json();
+            return {
+              courseId: course.id,
+              progress: progressData.progress || 0,
+            };
           }
-
-          const progressData = await progressResponse.json();
-          return { courseId: course.id, progress: progressData.progress || 0 };
-        });
+        );
 
         const progressResults = await Promise.all(progressPromises);
         const progressMap = progressResults.reduce((acc, curr) => {
@@ -565,9 +576,11 @@ const UserDashboard = () => {
                       <div key={course.id} className="relative">
                         <CourseCard
                           id={course.id}
+                          courseId={course.courseId || course.id}
                           title={course.title}
                           description={course.description}
                           duration={course.duration}
+                          enrolledUsers={course.enrolledUsers}
                           progress={progress}
                           userRole="employee"
                           tenantId={tenantId || ""}

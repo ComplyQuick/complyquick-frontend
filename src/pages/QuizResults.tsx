@@ -16,6 +16,7 @@ import { toast } from "sonner";
 import { uploadCertificateToDrive } from "@/services/googleDriveService";
 import { jwtDecode } from "jwt-decode";
 import { Loader } from "@/components/ui/loader";
+import { useAuthStore } from "@/store/authStore";
 
 interface QuizResult {
   question: string;
@@ -44,7 +45,7 @@ const QuizResults = () => {
   const [loading, setLoading] = useState(true);
   const [courseName, setCourseName] = useState("");
   const [userName, setUserName] = useState<string>("");
-  const [tenantId, setTenantId] = useState<string | null>(null);
+  const { tenantId } = useAuthStore();
   const [certificateUrl, setCertificateUrl] = useState<string | null>(null);
   const certificateRef = useRef<HTMLDivElement>(null);
   const [isGeneratingMCQ, setIsGeneratingMCQ] = useState(false);
@@ -66,11 +67,11 @@ const QuizResults = () => {
         setResults(parsedResults);
         // Calculate score with hint penalty
         const correctAnswers = parsedResults.filter(
-          (result: any) => result.isCorrect
+          (result: QuizResult) => result.isCorrect
         ).length;
         const totalQuestions = parsedResults.length;
         const hintsUsed = parsedResults.filter(
-          (result: any) => result.usedHint
+          (result: QuizResult) => result.usedHint
         ).length;
         let calculatedScore =
           (correctAnswers / totalQuestions) * 100 - hintsUsed * 3;
@@ -105,20 +106,10 @@ const QuizResults = () => {
         })
         .catch(() => {});
     }
-    // Get tenantId from localStorage or URL
-    const urlParams = new URLSearchParams(window.location.search);
-    const tenantIdFromUrl = urlParams.get("tenantId");
-    const tenantIdFromStorage = localStorage.getItem("tenantId");
-    const tenantIdFinal = tenantIdFromUrl || tenantIdFromStorage;
-    setTenantId(tenantIdFinal);
-    console.log(
-      "QuizResults: tenantId",
-      tenantIdFinal,
-      "courseId",
-      courseIdFinal
-    );
+    // Get tenantId from store
+    console.log("QuizResults: tenantId", tenantId, "courseId", courseIdFinal);
     setLoading(false);
-  }, [courseIdFinal]);
+  }, [courseIdFinal, tenantId]);
 
   // Fetch course name when tenantId and courseIdFinal are available
   useEffect(() => {

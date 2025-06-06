@@ -6,6 +6,7 @@ import { ArrowLeft, Home } from "lucide-react";
 import AssessmentQuiz from "@/components/course/AssessmentQuiz";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
+import { useAuthStore } from "@/store/authStore";
 
 // Mock quiz data - in a real app, this would come from an API
 const coursesQuizzes = {
@@ -173,13 +174,19 @@ const coursesQuizzes = {
   ],
 };
 
+interface Question {
+  id: string;
+  question: string;
+  options: { id: string; text: string }[];
+  correctOptionId: string;
+}
+
 const QuizPage = () => {
   const { courseId } = useParams<{ courseId: string }>();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const [questions, setQuestions] = useState<any[]>([]);
-  const tenantId = searchParams.get("tenantId");
-  const token = searchParams.get("token");
+  const [questions, setQuestions] = useState<Question[]>([]);
+  const { token, tenantId } = useAuthStore();
 
   useEffect(() => {
     if (courseId && coursesQuizzes[courseId as keyof typeof coursesQuizzes]) {

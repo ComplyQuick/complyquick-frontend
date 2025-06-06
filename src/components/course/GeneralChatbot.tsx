@@ -188,7 +188,6 @@ const GeneralChatbot = ({
         }
       } catch (error) {
         console.error("Error fetching course data:", error);
-        toast.error("Failed to load course data");
       }
     };
 

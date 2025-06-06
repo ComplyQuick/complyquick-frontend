@@ -8,9 +8,16 @@ import {
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Link, useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import CourseDetailsModal from "./CourseDetailsModal";
-import { Users, MessageCircle, Award } from "lucide-react";
+import {
+  Users,
+  MessageCircle,
+  Award,
+  MoreVertical,
+  Trash2,
+  Pencil,
+} from "lucide-react";
 import {
   Tooltip,
   TooltipContent,
@@ -24,13 +31,16 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import GeneralChatbot from "../course/GeneralChatbot";
+import { Menu } from "@headlessui/react";
+import { toast } from "sonner";
 
 interface CourseCardProps {
   id: string;
+  courseId: string;
   title: string;
   description: string;
   duration: string;
-  enrolledCount?: number;
+  enrolledUsers: number;
   progress?: number;
   userRole: "superuser" | "admin" | "employee";
   actionButton?: React.ReactNode;
@@ -41,6 +51,7 @@ interface CourseCardProps {
     mandatory: boolean;
     skippable: boolean;
     retryType: "DIFFERENT" | "SAME";
+    isEnabled?: boolean;
   } | null;
   learningObjectives?: string;
   onClick?: () => void;
@@ -48,14 +59,32 @@ interface CourseCardProps {
   canRetakeQuiz?: boolean;
   canDownloadCertificate?: boolean;
   certificateUrl?: string;
+  explanations?: Array<{
+    id: string;
+    content: string;
+    slideId: string;
+  }>;
+  courseDetails?: {
+    id: string;
+    title: string;
+    description: string;
+    learningObjectives: string;
+    properties: {
+      mandatory: boolean;
+      skippable: boolean;
+      retryType: "DIFFERENT" | "SAME";
+    };
+  };
+  onUpdateCourse?: () => void;
 }
 
 const CourseCard = ({
   id,
+  courseId,
   title,
   description,
   duration,
-  enrolledCount = 0,
+  enrolledUsers = 0,
   progress = 0,
   userRole,
   actionButton,
@@ -69,16 +98,25 @@ const CourseCard = ({
   canRetakeQuiz = false,
   canDownloadCertificate = false,
   certificateUrl = "",
+  explanations = [],
+  courseDetails,
+  onUpdateCourse,
 }: CourseCardProps) => {
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [showCardOverlay, setShowCardOverlay] = useState(false);
   const [isChatbotOpen, setIsChatbotOpen] = useState(false);
   const navigate = useNavigate();
+  const [isToggling, setIsToggling] = useState(false);
+  const [isEnabled, setIsEnabled] = useState<boolean | null>(null);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const [showCourseActions, setShowCourseActions] = useState(false);
 
   const defaultProperties = {
     mandatory: true,
     skippable: false,
     retryType: "DIFFERENT" as const,
+    isEnabled: true,
   };
 
   const courseProperties = properties || defaultProperties;
@@ -136,6 +174,74 @@ const CourseCard = ({
     a.remove();
   };
 
+  useEffect(() => {
+    if (typeof courseProperties.isEnabled === "boolean") {
+      setIsEnabled(courseProperties.isEnabled);
+    }
+  }, [courseProperties.isEnabled]);
+
+  useEffect(() => {
+    if (!dropdownOpen) return;
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target as Node)
+      ) {
+        setDropdownOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [dropdownOpen]);
+
+  const handleToggleCourse = async () => {
+    if (isToggling || isEnabled === null) return;
+    setIsToggling(true);
+    try {
+      console.log("Toggle request params:", {
+        tenantId,
+        courseId,
+        isEnabled: !isEnabled,
+        token: token ? "present" : "missing",
+      });
+
+      const response = await fetch(
+        `${
+          import.meta.env.VITE_BACKEND_URL
+        }/api/tenant-admin/tenants/${tenantId}/courses/${courseId}/toggle`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ isEnabled: !isEnabled }),
+        }
+      );
+
+      if (!response.ok) {
+        const error = await response.json();
+        console.error("Toggle request failed:", {
+          status: response.status,
+          statusText: response.statusText,
+          error,
+        });
+        throw new Error(error.error || "Failed to toggle course status");
+      }
+
+      const data = await response.json();
+      console.log("Toggle request successful:", data);
+      setIsEnabled(!isEnabled);
+    } catch (e) {
+      console.error("Error toggling course:", e);
+      toast.error(
+        e instanceof Error ? e.message : "Failed to toggle course status"
+      );
+    } finally {
+      setIsToggling(false);
+    }
+  };
+
   return (
     <>
       <Card
@@ -177,15 +283,73 @@ const CourseCard = ({
           </TooltipProvider>
         )}
 
+        {/* Admin/Superuser 3-dot menu - custom dropdown */}
+        {(userRole === "admin" || userRole === "superuser") && (
+          <div className="absolute top-4 right-4 z-30" ref={dropdownRef}>
+            <button
+              className="p-2 rounded-full hover:bg-white/10 focus:outline-none"
+              onClick={(e) => {
+                e.stopPropagation();
+                setDropdownOpen((open) => !open);
+              }}
+              aria-haspopup="true"
+              aria-expanded={dropdownOpen}
+            >
+              <MoreVertical className="h-5 w-5 text-white" />
+            </button>
+            {dropdownOpen &&
+              (userRole === "superuser" ? (
+                <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg mt-2 min-w-[120px] absolute right-0 overflow-hidden">
+                  <button
+                    className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800 flex items-center gap-2"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setDropdownOpen(false);
+                      if (onUpdateCourse) onUpdateCourse();
+                    }}
+                  >
+                    <Pencil className="h-4 w-4" />
+                    Update
+                  </button>
+                  <button
+                    className="w-full text-left px-4 py-2 text-sm text-white bg-red-600 hover:bg-red-700 transition flex items-center gap-2"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setDropdownOpen(false);
+                      setShowCourseActions(true);
+                    }}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    Delete
+                  </button>
+                </div>
+              ) : (
+                <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg mt-2 min-w-[120px] absolute right-0 overflow-hidden">
+                  <button
+                    disabled={isToggling}
+                    onClick={async (e) => {
+                      e.stopPropagation();
+                      await handleToggleCourse();
+                      setDropdownOpen(false);
+                    }}
+                    className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800"
+                  >
+                    {isEnabled ? "Deactivate" : "Activate"}
+                  </button>
+                </div>
+              ))}
+          </div>
+        )}
+
         <div className={`px-6 pt-5 pb-3 ${headerGradient}`}>
           <CardTitle
             className={`${titleColor} text-xl font-semibold flex items-center gap-1`}
           >
-            {title}
+            {courseDetails?.title || title}
             {isMandatory && <span className={`${titleColor} text-xl`}>*</span>}
           </CardTitle>
           <CardDescription className="text-[#A3B0C7] mt-0.5 text-sm">
-            {description}
+            {courseDetails?.description || description}
           </CardDescription>
         </div>
 
@@ -256,12 +420,12 @@ const CourseCard = ({
                 <div className="flex items-center gap-1">
                   <Users className="h-4 w-4 text-[#A3B0C7]" />
                   <span className="text-sm text-[#A3B0C7]">
-                    {enrolledCount}
+                    {enrolledUsers}
                   </span>
                 </div>
               </div>
               <p className="text-sm text-[#A3B0C7] line-clamp-2">
-                {learningObjectives}
+                {courseDetails?.learningObjectives || learningObjectives}
               </p>
             </div>
           )}
@@ -321,31 +485,95 @@ const CourseCard = ({
         isOpen={isDetailsModalOpen}
         onClose={() => setIsDetailsModalOpen(false)}
         course={{
-          id,
-          title,
-          description,
-          learningObjectives: learningObjectives ? [learningObjectives] : [],
+          id: courseId,
+          title: courseDetails?.title || title,
+          description: courseDetails?.description || description,
+          learningObjectives:
+            courseDetails?.learningObjectives || learningObjectives,
           properties: courseProperties,
+          enrolledUsers,
+          ...courseDetails,
         }}
       />
 
-      {/* Chatbot Dialog */}
-      <Dialog open={isChatbotOpen} onOpenChange={setIsChatbotOpen}>
-        <DialogContent className="DialogContent max-w-4xl h-[80vh]">
-          <style>{`
-            .DialogContent > button,
-            .DialogContent [data-dialog-close] {
-              display: none !important;
-            }
-          `}</style>
+      {/* Chatbot Overlay - minimal, no extra styling */}
+      {isChatbotOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <button
+            onClick={() => setIsChatbotOpen(false)}
+            className="absolute top-4 right-4 z-10 p-2 rounded-full bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700 transition-colors"
+            aria-label="Close chatbot"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-5 w-5"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M6 18L18 6M6 6l12 12"
+              />
+            </svg>
+          </button>
           <GeneralChatbot
             tenantId={tenantId}
             initialCourseId={id}
             hideCourseSelector={true}
             onClose={() => setIsChatbotOpen(false)}
           />
-        </DialogContent>
-      </Dialog>
+        </div>
+      )}
+
+      {/* Dialog for Delete Course (superuser) */}
+      {userRole === "superuser" && (
+        <Dialog open={showCourseActions} onOpenChange={setShowCourseActions}>
+          <DialogContent className="max-w-xs">
+            <div className="flex flex-col gap-2">
+              <div className="text-lg font-semibold mb-2">Delete Course</div>
+              <div className="text-muted-foreground mb-4">
+                Are you sure you want to delete this course? This action cannot
+                be undone.
+              </div>
+              <button
+                className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-muted rounded"
+                onClick={async () => {
+                  try {
+                    const courseDeleteId =
+                      userRole === "superuser" ? id : courseId;
+                    const res = await fetch(
+                      `${
+                        import.meta.env.VITE_BACKEND_URL
+                      }/api/superadmin/course/${courseDeleteId}`,
+                      {
+                        method: "DELETE",
+                        headers: { "Content-Type": "application/json" },
+                      }
+                    );
+                    if (!res.ok) throw new Error("Failed to delete course");
+                    toast.success("Course deleted successfully");
+                    setShowCourseActions(false);
+                    // Optionally trigger a refresh in parent
+                  } catch (err) {
+                    toast.error("Failed to delete course");
+                  }
+                }}
+              >
+                Confirm Delete
+              </button>
+              <button
+                className="w-full text-left px-4 py-2 text-sm hover:bg-muted rounded"
+                onClick={() => setShowCourseActions(false)}
+              >
+                Cancel
+              </button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
     </>
   );
 };

@@ -2,14 +2,30 @@ import { useState, useEffect } from "react";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { PlusCircle, Building, BookOpen, Users } from "lucide-react";
+import {
+  PlusCircle,
+  Building,
+  BookOpen,
+  Users,
+  MoreVertical,
+  Trash2,
+  Pencil,
+} from "lucide-react";
 import UsersList from "@/components/dashboard/UsersList";
 import CourseCard from "@/components/dashboard/CourseCard";
 import AddOrganizationForm from "@/components/forms/AddOrganizationForm";
 import AddCourseForm from "@/components/forms/AddCourseForm";
 import { toast } from "sonner";
+import { Menu } from "@headlessui/react";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 
 interface Course {
   id: string;
@@ -81,31 +97,40 @@ const SuperUserDashboard = () => {
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
+  const [showCourseActions, setShowCourseActions] = useState(false);
+  const [showUpdateModal, setShowUpdateModal] = useState(false);
+  const [updateCourse, setUpdateCourse] = useState<Course | null>(null);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         // Fetch courses
-        const coursesResponse = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/courses`);
+        const coursesResponse = await fetch(
+          `${import.meta.env.VITE_BACKEND_URL}/api/courses`
+        );
         if (!coursesResponse.ok) {
-          throw new Error('Failed to fetch courses');
+          throw new Error("Failed to fetch courses");
         }
         const coursesData = await coursesResponse.json();
         setCourses(coursesData);
 
         // Fetch tenants
-        const tenantsResponse = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/tenants`);
+        const tenantsResponse = await fetch(
+          `${import.meta.env.VITE_BACKEND_URL}/api/tenants`
+        );
         if (!tenantsResponse.ok) {
-          throw new Error('Failed to fetch tenants');
+          throw new Error("Failed to fetch tenants");
         }
         const tenantsData = await tenantsResponse.json();
         setTenants(tenantsData);
 
         setIsLoading(false);
       } catch (error) {
-        console.error('Error fetching data:', error);
-        setError('Failed to load data');
-        toast.error('Failed to load data. Please try again later.');
+        console.error("Error fetching data:", error);
+        setError("Failed to load data");
+        toast.error("Failed to load data. Please try again later.");
         setIsLoading(false);
       }
     };
@@ -117,15 +142,17 @@ const SuperUserDashboard = () => {
     // Refresh courses after a new one is created
     const fetchCourses = async () => {
       try {
-        const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/courses`);
+        const response = await fetch(
+          `${import.meta.env.VITE_BACKEND_URL}/api/courses`
+        );
         if (!response.ok) {
-          throw new Error('Failed to fetch courses');
+          throw new Error("Failed to fetch courses");
         }
         const data = await response.json();
         setCourses(data);
       } catch (error) {
-        console.error('Error fetching courses:', error);
-        toast.error('Failed to refresh courses');
+        console.error("Error fetching courses:", error);
+        toast.error("Failed to refresh courses");
       }
     };
 
@@ -136,15 +163,17 @@ const SuperUserDashboard = () => {
     // Refresh tenants after a new one is created
     const fetchTenants = async () => {
       try {
-        const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/tenants`);
+        const response = await fetch(
+          `${import.meta.env.VITE_BACKEND_URL}/api/tenants`
+        );
         if (!response.ok) {
-          throw new Error('Failed to fetch tenants');
+          throw new Error("Failed to fetch tenants");
         }
         const data = await response.json();
         setTenants(data);
       } catch (error) {
-        console.error('Error fetching tenants:', error);
-        toast.error('Failed to refresh tenants');
+        console.error("Error fetching tenants:", error);
+        toast.error("Failed to refresh tenants");
       }
     };
 
@@ -158,18 +187,22 @@ const SuperUserDashboard = () => {
         <div className="container mx-auto px-4 py-8">
           <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
             <div className="animate-fade-in">
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Super User Dashboard</h1>
-              <p className="text-gray-600 dark:text-gray-400">Manage organizations, courses, and system-wide settings</p>
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                Super User Dashboard
+              </h1>
+              <p className="text-gray-600 dark:text-gray-400">
+                Manage organizations, courses, and system-wide settings
+              </p>
             </div>
             <div className="flex space-x-3 animate-fade-in">
-              <Button 
+              <Button
                 className="bg-complybrand-700 hover:bg-complybrand-800 hover:shadow-lg transition-all duration-300 text-white"
                 onClick={() => setOrganizationDialogOpen(true)}
               >
                 <PlusCircle className="mr-2 h-4 w-4" />
                 Add Organization
               </Button>
-              <Button 
+              <Button
                 className="bg-complybrand-700 hover:bg-complybrand-800 hover:shadow-lg transition-all duration-300 text-white"
                 onClick={() => setCourseDialogOpen(true)}
               >
@@ -188,9 +221,13 @@ const SuperUserDashboard = () => {
                 <Building className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold animate-fade-in">{tenants.length}</div>
+                <div className="text-2xl font-bold animate-fade-in">
+                  {tenants.length}
+                </div>
                 <p className="text-xs text-muted-foreground">
-                  {tenants.length > 0 ? `+${tenants.length} from last month` : 'No organizations yet'}
+                  {tenants.length > 0
+                    ? `+${tenants.length} from last month`
+                    : "No organizations yet"}
                 </p>
               </CardContent>
             </Card>
@@ -202,9 +239,13 @@ const SuperUserDashboard = () => {
                 <BookOpen className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold animate-fade-in">{courses.length}</div>
+                <div className="text-2xl font-bold animate-fade-in">
+                  {courses.length}
+                </div>
                 <p className="text-xs text-muted-foreground">
-                  {courses.length > 0 ? `+${courses.length} from last month` : 'No courses yet'}
+                  {courses.length > 0
+                    ? `+${courses.length} from last month`
+                    : "No courses yet"}
                 </p>
               </CardContent>
             </Card>
@@ -217,7 +258,10 @@ const SuperUserDashboard = () => {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold animate-fade-in">
-                  {tenants.reduce((acc, tenant) => acc + (tenant.users?.length || 0), 0)}
+                  {tenants.reduce(
+                    (acc, tenant) => acc + (tenant.users?.length || 0),
+                    0
+                  )}
                 </div>
                 {/* <p className="text-xs text-muted-foreground">
                   +43 from last month
@@ -226,14 +270,39 @@ const SuperUserDashboard = () => {
             </Card>
           </div>
 
-          <Tabs defaultValue="overview" value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+          <Tabs
+            defaultValue="overview"
+            value={activeTab}
+            onValueChange={setActiveTab}
+            className="space-y-4"
+          >
             <TabsList className="bg-muted/50 backdrop-blur-sm">
-              <TabsTrigger value="overview" className="data-[state=active]:bg-complybrand-600 data-[state=active]:text-white">Overview</TabsTrigger>
-              <TabsTrigger value="organizations" className="data-[state=active]:bg-complybrand-600 data-[state=active]:text-white">Organizations</TabsTrigger>
-              <TabsTrigger value="courses" className="data-[state=active]:bg-complybrand-600 data-[state=active]:text-white">Courses</TabsTrigger>
-              <TabsTrigger value="users" className="data-[state=active]:bg-complybrand-600 data-[state=active]:text-white">Users</TabsTrigger>
+              <TabsTrigger
+                value="overview"
+                className="data-[state=active]:bg-complybrand-600 data-[state=active]:text-white"
+              >
+                Overview
+              </TabsTrigger>
+              <TabsTrigger
+                value="organizations"
+                className="data-[state=active]:bg-complybrand-600 data-[state=active]:text-white"
+              >
+                Organizations
+              </TabsTrigger>
+              <TabsTrigger
+                value="courses"
+                className="data-[state=active]:bg-complybrand-600 data-[state=active]:text-white"
+              >
+                Courses
+              </TabsTrigger>
+              <TabsTrigger
+                value="users"
+                className="data-[state=active]:bg-complybrand-600 data-[state=active]:text-white"
+              >
+                Users
+              </TabsTrigger>
             </TabsList>
-            
+
             <TabsContent value="overview" className="space-y-4 animate-fade-in">
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {isLoading ? (
@@ -258,11 +327,13 @@ const SuperUserDashboard = () => {
                   ))
                 ) : (
                   <div className="col-span-full text-center py-8">
-                    <p className="text-muted-foreground">No courses available</p>
+                    <p className="text-muted-foreground">
+                      No courses available
+                    </p>
                   </div>
                 )}
               </div>
-              
+
               <Card className="mt-6 overflow-hidden bg-card/50 backdrop-blur-sm border border-border/50">
                 <CardHeader>
                   <CardTitle>Recent Organizations</CardTitle>
@@ -274,7 +345,9 @@ const SuperUserDashboard = () => {
                   <div className="space-y-8">
                     {isLoading ? (
                       <div className="text-center py-8">
-                        <p className="text-muted-foreground">Loading organizations...</p>
+                        <p className="text-muted-foreground">
+                          Loading organizations...
+                        </p>
                       </div>
                     ) : error ? (
                       <div className="text-center py-8">
@@ -282,11 +355,17 @@ const SuperUserDashboard = () => {
                       </div>
                     ) : tenants.length > 0 ? (
                       tenants.slice(0, 3).map((tenant) => (
-                        <div key={tenant.id} className="flex items-center p-3 rounded-md hover:bg-muted/20 transition-all duration-200">
+                        <div
+                          key={tenant.id}
+                          className="flex items-center p-3 rounded-md hover:bg-muted/20 transition-all duration-200"
+                        >
                           <div className="space-y-1">
-                            <p className="text-sm font-medium leading-none">{tenant.name}</p>
+                            <p className="text-sm font-medium leading-none">
+                              {tenant.name}
+                            </p>
                             <p className="text-sm text-muted-foreground">
-                              {tenant.users?.length || 0} users · {tenant.courses?.length || 0} courses
+                              {tenant.users?.length || 0} users ·{" "}
+                              {tenant.courses?.length || 0} courses
                             </p>
                           </div>
                           <div className="ml-auto font-medium">
@@ -296,15 +375,20 @@ const SuperUserDashboard = () => {
                       ))
                     ) : (
                       <div className="text-center py-8">
-                        <p className="text-muted-foreground">No organizations available</p>
+                        <p className="text-muted-foreground">
+                          No organizations available
+                        </p>
                       </div>
                     )}
                   </div>
                 </CardContent>
               </Card>
             </TabsContent>
-            
-            <TabsContent value="organizations" className="space-y-4 animate-fade-in">
+
+            <TabsContent
+              value="organizations"
+              className="space-y-4 animate-fade-in"
+            >
               <Card className="overflow-hidden bg-card/50 backdrop-blur-sm border border-border/50">
                 <CardHeader>
                   <CardTitle>Organizations</CardTitle>
@@ -316,7 +400,9 @@ const SuperUserDashboard = () => {
                   <div className="space-y-4">
                     {isLoading ? (
                       <div className="text-center py-8">
-                        <p className="text-muted-foreground">Loading organizations...</p>
+                        <p className="text-muted-foreground">
+                          Loading organizations...
+                        </p>
                       </div>
                     ) : error ? (
                       <div className="text-center py-8">
@@ -324,34 +410,112 @@ const SuperUserDashboard = () => {
                       </div>
                     ) : tenants.length > 0 ? (
                       tenants.map((tenant) => (
-                        <div key={tenant.id} className="flex items-center p-4 border border-border/30 rounded-md hover:bg-muted/20 transition-all duration-200">
+                        <div
+                          key={tenant.id}
+                          className="flex items-center p-4 border border-border/30 rounded-md hover:bg-muted/20 transition-all duration-200"
+                        >
                           <div className="space-y-1">
-                            <p className="text-sm font-medium leading-none">{tenant.name}</p>
+                            <p className="text-sm font-medium leading-none">
+                              {tenant.name}
+                            </p>
                             <p className="text-sm text-muted-foreground">
-                              {tenant.users?.length || 0} users · {tenant.courses?.length || 0} courses
+                              {tenant.users?.length || 0} users ·{" "}
+                              {tenant.courses?.length || 0} courses
                             </p>
                             <p className="text-xs text-muted-foreground">
                               Admin: {tenant.adminEmail}
                             </p>
                           </div>
                           <div className="ml-auto">
-                            <Button variant="outline" className="hover:bg-complybrand-600 hover:text-white transition-colors">
-                              View Details
-                            </Button>
+                            <Menu
+                              as="div"
+                              className="relative inline-block text-left"
+                            >
+                              <Menu.Button className="p-1 rounded-full hover:bg-muted focus:outline-none">
+                                <MoreVertical className="h-5 w-5 text-gray-500" />
+                              </Menu.Button>
+                              <Menu.Items
+                                className="absolute right-0 bottom-full mb-2 w-auto origin-bottom-right bg-transparent border-none shadow-none z-[9999]"
+                                style={{ zIndex: 9999 }}
+                              >
+                                <Menu.Item>
+                                  {({ active }) => (
+                                    <button
+                                      className="px-2 py-1 rounded-xl font-semibold text-m text-white bg-red-600 hover:bg-red-700 transition flex items-center gap-1"
+                                      style={{ minWidth: 80 }}
+                                      onClick={async () => {
+                                        if (
+                                          window.confirm(
+                                            "Are you sure you want to delete this organization? This action cannot be undone."
+                                          )
+                                        ) {
+                                          try {
+                                            const res = await fetch(
+                                              `${
+                                                import.meta.env.VITE_BACKEND_URL
+                                              }/api/superadmin/tenant/${
+                                                tenant.id
+                                              }`,
+                                              {
+                                                method: "DELETE",
+                                                headers: {
+                                                  "Content-Type":
+                                                    "application/json",
+                                                },
+                                              }
+                                            );
+                                            if (!res.ok)
+                                              throw new Error(
+                                                "Failed to delete organization"
+                                              );
+                                            setTenants((prev) =>
+                                              prev.filter(
+                                                (t) => t.id !== tenant.id
+                                              )
+                                            );
+                                            toast.success(
+                                              "Organization deleted successfully"
+                                            );
+                                          } catch (err) {
+                                            toast.error(
+                                              "Failed to delete organization"
+                                            );
+                                          }
+                                        }
+                                      }}
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                      Delete
+                                    </button>
+                                  )}
+                                </Menu.Item>
+                              </Menu.Items>
+                            </Menu>
                           </div>
                         </div>
                       ))
                     ) : (
                       <div className="text-center py-8">
-                        <p className="text-muted-foreground">No organizations available</p>
+                        <p className="text-muted-foreground">
+                          No organizations available
+                        </p>
                       </div>
                     )}
                   </div>
                 </CardContent>
               </Card>
             </TabsContent>
-            
+
             <TabsContent value="courses" className="animate-fade-in">
+              <AddCourseForm
+                open={!!updateCourse}
+                onOpenChange={(open) => {
+                  if (!open) setUpdateCourse(null);
+                }}
+                course={updateCourse}
+                mode="update"
+                onCourseCreated={handleCourseCreated}
+              />
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {isLoading ? (
                   <div className="col-span-full text-center py-8">
@@ -363,40 +527,71 @@ const SuperUserDashboard = () => {
                   </div>
                 ) : courses.length > 0 ? (
                   courses.map((course) => (
-                    <CourseCard
-                      key={course.id}
-                      id={course.id}
-                      title={course.title}
-                      description={course.description}
-                      duration={`${course.duration} minutes`}
-                      enrolledCount={0} // This would need to be fetched from the backend
-                      userRole="superuser"
-                    />
+                    <div key={course.id} className="relative">
+                      <CourseCard
+                        id={course.id}
+                        title={course.title}
+                        description={course.description}
+                        duration={`${course.duration} minutes`}
+                        enrolledCount={0}
+                        userRole="superuser"
+                        onUpdateCourse={() => setUpdateCourse(course)}
+                      />
+                      {dropdownOpen &&
+                        (course.id === selectedCourse?.id ? (
+                          <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded shadow-lg mt-2 min-w-[120px] absolute right-0">
+                            <button
+                              className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800 flex items-center gap-2"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setDropdownOpen(false);
+                                if (onUpdateCourse) onUpdateCourse();
+                              }}
+                            >
+                              <Pencil className="h-4 w-4" />
+                              Update Course
+                            </button>
+                            <button
+                              className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100 dark:hover:bg-gray-800 flex items-center gap-2"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setDropdownOpen(false);
+                                setShowCourseActions(true);
+                              }}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                              Delete Course
+                            </button>
+                          </div>
+                        ) : null)}
+                    </div>
                   ))
                 ) : (
                   <div className="col-span-full text-center py-8">
-                    <p className="text-muted-foreground">No courses available</p>
+                    <p className="text-muted-foreground">
+                      No courses available
+                    </p>
                   </div>
                 )}
               </div>
             </TabsContent>
-            
+
             <TabsContent value="users" className="animate-fade-in">
               <Card className="overflow-hidden bg-card/50 backdrop-blur-sm border border-border/50">
                 <CardContent className="pt-6">
-                  <UsersList 
-                    users={tenants.flatMap(tenant => 
-                      (tenant.users || []).map(user => ({
+                  <UsersList
+                    users={tenants.flatMap((tenant) =>
+                      (tenant.users || []).map((user) => ({
                         id: user.id,
                         name: user.name,
                         email: user.email,
                         department: "N/A",
                         coursesCompleted: 0,
                         totalCourses: tenant.courses?.length || 0,
-                        lastActivity: "N/A"
+                        lastActivity: "N/A",
                       }))
-                    )} 
-                    title="All Platform Users" 
+                    )}
+                    title="All Platform Users"
                   />
                 </CardContent>
               </Card>
@@ -405,7 +600,7 @@ const SuperUserDashboard = () => {
         </div>
       </main>
 
-      <AddOrganizationForm 
+      <AddOrganizationForm
         open={organizationDialogOpen}
         onOpenChange={setOrganizationDialogOpen}
         onOrganizationCreated={handleOrganizationCreated}
@@ -416,7 +611,7 @@ const SuperUserDashboard = () => {
         onOpenChange={setCourseDialogOpen}
         onCourseCreated={handleCourseCreated}
       />
-      
+
       <Footer />
     </div>
   );
