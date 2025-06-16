@@ -98,8 +98,6 @@ const AddTenantDetailsForm: React.FC<AddTenantDetailsFormProps> = ({
         throw new Error("No tenant ID found. Please create a tenant first.");
       }
 
-      console.log("Using tenant ID:", storedTenantId); // Debug log
-
       const response = await fetch(
         `${
           import.meta.env.VITE_BACKEND_URL

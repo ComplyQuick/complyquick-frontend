@@ -25,18 +25,8 @@ const CoursePlayer = () => {
   const [explanations, setExplanations] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    console.log("CoursePlayer mounted with params:", {
-      courseId,
-      tenantId,
-      fullPath: window.location.pathname,
-      searchParams: Object.fromEntries(searchParams.entries()),
-    });
-  }, [courseId, tenantId, searchParams]);
-
-  useEffect(() => {
     const fetchData = async () => {
       if (!courseId || !tenantId) {
-        console.error("Missing required parameters:", { courseId, tenantId });
         toast.error("Missing required parameters");
         navigate("/dashboard");
         return;
@@ -74,7 +64,6 @@ const CoursePlayer = () => {
         const explanationsData = await explanationsResponse.json();
         setExplanations(explanationsData);
       } catch (error) {
-        console.error("Error fetching course data:", error);
         toast.error("Failed to load course content");
       } finally {
         setIsLoading(false);
@@ -107,7 +96,6 @@ const CoursePlayer = () => {
 
       toast.success("Course completed successfully!");
     } catch (error) {
-      console.error("Error completing course:", error);
       toast.error("Failed to complete course");
     }
   };

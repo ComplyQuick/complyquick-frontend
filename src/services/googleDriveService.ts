@@ -97,10 +97,6 @@ export const uploadCertificateToDrive = async (
     );
 
     const fileInfo = await fileResponse.json();
-    console.log(
-      "Certificate uploaded successfully. URL:",
-      fileInfo.webViewLink
-    );
     return fileInfo.webViewLink;
   } catch (error) {
     console.error("Error uploading certificate to Google Drive:", error);

@@ -145,7 +145,7 @@ const ChatHelp = ({ slideTitle, slideContent, tenantId }: ChatHelpProps) => {
           setCourseMaterial({ materialUrl: storedMaterialUrl });
         }
       } catch (error) {
-        console.error("Error fetching required data:", error);
+        toast.error("Failed to fetch required data");
       }
     };
 
@@ -185,7 +185,6 @@ const ChatHelp = ({ slideTitle, slideContent, tenantId }: ChatHelpProps) => {
     setIsLoading(true);
 
     try {
-
       const response = await fetch("http://localhost:8000/chatbot", {
         method: "POST",
         headers: {
@@ -200,18 +199,10 @@ const ChatHelp = ({ slideTitle, slideContent, tenantId }: ChatHelpProps) => {
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => null);
-        console.error("Error response:", {
-          status: response.status,
-          statusText: response.statusText,
-          errorData,
-        });
         throw new Error(`API error: ${response.status} ${response.statusText}`);
       }
 
       const data = await response.json();
-      console.log("Chatbot response:", data);
-
       const botReply =
         typeof data.response === "object" && data.response.response
           ? data.response.response
@@ -223,7 +214,6 @@ const ChatHelp = ({ slideTitle, slideContent, tenantId }: ChatHelpProps) => {
 
       setMessages((prev) => [...prev, assistantMessage]);
     } catch (error) {
-      console.error("Error sending message:", error);
       toast.error("Failed to get response from AI service");
     } finally {
       setIsLoading(false);

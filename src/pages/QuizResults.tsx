@@ -39,7 +39,6 @@ const QuizResults = () => {
       courseIdFinal = localStorage.getItem("lastQuizCourseId") || undefined;
     }
   }
-  console.log("QuizResults: Final courseId used:", courseIdFinal);
   const [results, setResults] = useState<QuizResult[]>([]);
   const [score, setScore] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -56,13 +55,9 @@ const QuizResults = () => {
       `course_name_${courseIdFinal}`
     );
 
-    console.log("Stored results:", storedResults);
-
     if (storedResults) {
       try {
         const parsedResults = JSON.parse(storedResults);
-        console.log("Parsed results:", parsedResults);
-        console.log("Number of questions:", parsedResults.length);
 
         setResults(parsedResults);
         // Calculate score with hint penalty
@@ -77,19 +72,10 @@ const QuizResults = () => {
           (correctAnswers / totalQuestions) * 100 - hintsUsed * 3;
         if (calculatedScore < 0) calculatedScore = 0;
 
-        console.log("Score calculation:", {
-          correctAnswers,
-          totalQuestions,
-          hintsUsed,
-          calculatedScore,
-        });
-
         setScore(calculatedScore);
       } catch (error) {
-        console.error("Error parsing results:", error);
+        toast.error("Error parsing quiz results");
       }
-    } else {
-      console.log("No stored results found");
     }
     // Fetch user name from profile endpoint
     const token = localStorage.getItem("token");
@@ -106,8 +92,6 @@ const QuizResults = () => {
         })
         .catch(() => {});
     }
-    // Get tenantId from store
-    console.log("QuizResults: tenantId", tenantId, "courseId", courseIdFinal);
     setLoading(false);
   }, [courseIdFinal, tenantId]);
 
@@ -139,7 +123,6 @@ const QuizResults = () => {
     // Get retryType from localStorage
     const retryType =
       localStorage.getItem(`course_${courseIdFinal}_retryType`) || "SAME";
-    console.log("RetryType for this course:", retryType);
 
     if (retryType === "SAME") {
       // Shuffle the currentQuiz questions
@@ -207,7 +190,6 @@ const QuizResults = () => {
         localStorage.removeItem("quizResults");
         window.history.back();
       } catch (error) {
-        console.error("Error generating new MCQs:", error);
         toast.error("Failed to generate new quiz questions.");
       } finally {
         setIsGeneratingMCQ(false);
@@ -242,8 +224,6 @@ const QuizResults = () => {
 
         // Upload to Google Drive
         const driveUrl = await uploadCertificateToDrive(arrayBuffer, fileName);
-        console.log("Certificate uploaded successfully!");
-        console.log("Certificate URL:", driveUrl);
         setCertificateUrl(driveUrl);
 
         // Store certificate in backend
@@ -276,9 +256,7 @@ const QuizResults = () => {
             }
           )
             .then((res) => res.json())
-            .then((data) => {
-              console.log("Certificate stored in backend:", data);
-            })
+            
             .catch((err) => {
               console.error("Failed to store certificate in backend:", err);
             });

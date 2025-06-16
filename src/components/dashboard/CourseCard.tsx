@@ -175,7 +175,7 @@ const CourseCard = ({
     const match = certificateUrl.match(/\/d\/([\w-]+)/);
     const fileId = match ? match[1] : null;
     if (!fileId) {
-      console.error("Invalid Google Drive URL");
+      toast.error("Invalid Google Drive URL");
       return;
     }
     const directUrl = `https://drive.google.com/uc?export=download&id=${fileId}`;
@@ -211,13 +211,6 @@ const CourseCard = ({
     if (isToggling || isEnabled === null) return;
     setIsToggling(true);
     try {
-      console.log("Toggle request params:", {
-        tenantId,
-        courseId,
-        isEnabled: !isEnabled,
-        token: token ? "present" : "missing",
-      });
-
       const response = await fetch(
         `${
           import.meta.env.VITE_BACKEND_URL
@@ -234,22 +227,13 @@ const CourseCard = ({
 
       if (!response.ok) {
         const error = await response.json();
-        console.error("Toggle request failed:", {
-          status: response.status,
-          statusText: response.statusText,
-          error,
-        });
         throw new Error(error.error || "Failed to toggle course status");
       }
 
       const data = await response.json();
-      console.log("Toggle request successful:", data);
       setIsEnabled(!isEnabled);
     } catch (e) {
-      console.error("Error toggling course:", e);
-      toast.error(
-        e instanceof Error ? e.message : "Failed to toggle course status"
-      );
+      toast.error("Failed to toggle course status");
     } finally {
       setIsToggling(false);
     }
@@ -435,9 +419,6 @@ const CourseCard = ({
                     onClick={(e) => {
                       e.stopPropagation();
                       if (onClick) {
-                        console.log(
-                          "CourseCard Start/Resume button clicked, calling onClick prop"
-                        );
                         onClick();
                       }
                     }}
@@ -459,9 +440,6 @@ const CourseCard = ({
                   onClick={(e) => {
                     e.stopPropagation();
                     if (onClick) {
-                      console.log(
-                        "CourseCard Start/Resume button clicked, calling onClick prop"
-                      );
                       onClick();
                     }
                   }}
@@ -514,9 +492,6 @@ const CourseCard = ({
                     onClick={(e) => {
                       e.stopPropagation();
                       if (onClick) {
-                        console.log(
-                          "CourseCard Play/Start button clicked, calling onClick prop"
-                        );
                         onClick();
                       } else {
                         navigate(

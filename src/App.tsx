@@ -102,12 +102,7 @@ const App = () => {
                     </ProtectedRoute>
                   }
                 />
-                <Route
-                  path="/dashboard"
-                  element={
-                      <UserDashboard />
-                  }
-                />
+                <Route path="/dashboard" element={<UserDashboard />} />
                 {/* <Route
                   path="/dashboard/course/:courseId"
                   element={<CourseDetails />}

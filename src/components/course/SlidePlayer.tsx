@@ -149,22 +149,10 @@ const SlidePlayer = ({
       try {
         const tenantId = localStorage.getItem("tenantId");
         if (!courseId || !tenantId) {
-          console.error("Missing courseId or tenantId:", {
-            courseId,
-            tenantId,
-          });
           throw new Error("Missing courseId or tenantId");
         }
 
         // First fetch course details to get materialUrl
-        console.log("Fetching course details...", {
-          url: `${
-            import.meta.env.VITE_BACKEND_URL
-          }/api/tenant-admin/tenants/${tenantId}/courses`,
-          courseId,
-          tenantId,
-        });
-
         const courseResponse = await fetch(
           `${
             import.meta.env.VITE_BACKEND_URL
@@ -172,10 +160,6 @@ const SlidePlayer = ({
         );
 
         if (!courseResponse.ok) {
-          console.error("Failed to fetch course details:", {
-            status: courseResponse.status,
-            statusText: courseResponse.statusText,
-          });
           throw new Error("Failed to fetch course details");
         }
 
@@ -186,17 +170,11 @@ const SlidePlayer = ({
           (course: any) => course.id === courseId
         );
         if (!currentCourse) {
-          console.error("Current course not found:", {
-            courseId,
-            availableCourseIds: courseData.map((c: any) => c.id),
-          });
           throw new Error("Current course not found");
         }
         // Update the material URL state
         if (currentCourse.materialUrl) {
           setMaterialUrl(currentCourse.materialUrl);
-        } else {
-          console.warn("No materialUrl found in course details");
         }
         const response = await fetch(
           `${
@@ -205,10 +183,6 @@ const SlidePlayer = ({
         );
 
         if (!response.ok) {
-          console.error("Failed to fetch explanations:", {
-            status: response.status,
-            statusText: response.statusText,
-          });
           throw new Error("Failed to fetch explanations");
         }
 
@@ -234,7 +208,6 @@ const SlidePlayer = ({
           }
         }
       } catch (error) {
-        console.error("Error in fetchExplanations:", error);
         toast.error("Failed to load slide explanations");
       }
     };
@@ -413,13 +386,6 @@ const SlidePlayer = ({
   useEffect(() => {
     setMaxVisitedSlide((prev) => {
       if (currentSlideIndex > prev) {
-        console.log(
-          "[SlidePlayer] Updating maxVisitedSlide:",
-          currentSlideIndex,
-          "(prev:",
-          prev,
-          ")"
-        );
         return currentSlideIndex;
       }
       return prev;
@@ -480,7 +446,6 @@ const SlidePlayer = ({
         progress: 100,
         slideNumber: currentSlideIndex + 1,
       };
-      console.log("Sending update-progress request with body:", requestBody);
 
       const response = await fetch(
         `${

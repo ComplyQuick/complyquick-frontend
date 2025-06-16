@@ -121,7 +121,7 @@ const CoursePlayer = ({
   useEffect(() => {
     const fetchExplanationsAndSetSlide = async () => {
       if (!courseId || !urlTenantId || !urlToken) {
-        console.error("Missing required parameters");
+        toast.error("Missing required parameters");
         return;
       }
 
@@ -144,7 +144,6 @@ const CoursePlayer = ({
         }
 
         const data = await response.json();
-        console.log("[CoursePlayer] Explanations response:", data);
 
         // The response is an object with an explanations array
         const explanations = data.explanations || [];
@@ -154,7 +153,6 @@ const CoursePlayer = ({
         }
 
         const totalSlides = explanations.length;
-        console.log("[CoursePlayer] Total slides:", totalSlides);
 
         // Calculate resume slide
         let resumeSlide = 0;
@@ -163,33 +161,22 @@ const CoursePlayer = ({
           // Ensure we don't exceed the total number of slides
           if (resumeSlide >= totalSlides) resumeSlide = totalSlides - 1;
         }
-        console.log(
-          `[CoursePlayer] Calculated resumeSlide: ${resumeSlide} (progress: ${urlProgress}, totalSlides: ${totalSlides})`
-        );
 
         // Convert explanations to slides format
         const slidesData = explanations.map(
-          (explanation: any, index: number) => {
-            const slideObj = {
-              id: `slide-${index + 1}`,
-              title: `Slide ${index + 1}`,
-              content: explanation.content || explanation, // Handle both object and string formats
-              completed: false,
-            };
-            console.log(`[CoursePlayer] Slide ${index}:`, slideObj);
-            return slideObj;
-          }
+          (explanation: any, index: number) => ({
+            id: `slide-${index + 1}`,
+            title: `Slide ${index + 1}`,
+            content: explanation.content || explanation, // Handle both object and string formats
+            completed: false,
+          })
         );
 
         setSlides(slidesData);
         setCurrentSlideIndex(resumeSlide);
         resumeSlideRef.current = resumeSlide;
-        console.log(
-          `[CoursePlayer] Set resumeSlideRef.current = ${resumeSlide}`
-        );
         setIsLoading(false);
       } catch (error) {
-        console.error("[CoursePlayer] Error fetching explanations:", error);
         toast.error("Failed to load course content");
         setIsLoading(false);
       }
@@ -199,63 +186,41 @@ const CoursePlayer = ({
   }, [courseId, urlTenantId, urlToken, urlProgress]);
 
   const handleSlideChange = (index: number) => {
-    console.log(
-      `[CoursePlayer] Changing slide from ${currentSlideIndex} to ${index}`
-    );
     setCurrentSlideIndex(index);
   };
 
   const handleCourseComplete = () => {
-    console.log("Course completed");
     setCourseCompleted(true);
     toast.success("Course completed successfully!");
   };
 
   const handleReturnToDashboard = () => {
-    console.log("Returning to dashboard");
     navigate(`/dashboard?tenantId=${urlTenantId}&token=${urlToken}`);
   };
 
   const handleSkipForward = () => {
     if (audioElement && courseProperties.skippable) {
       audioElement.currentTime += 5;
-      console.log(
-        "Skipped forward 5 seconds. New time:",
-        audioElement.currentTime
-      );
     }
   };
 
   const handleSkipBackward = () => {
     if (audioElement && courseProperties.skippable) {
       audioElement.currentTime = Math.max(0, audioElement.currentTime - 5);
-      console.log(
-        "Skipped backward 5 seconds. New time:",
-        audioElement.currentTime
-      );
     }
   };
 
   if (!courseId) {
-    console.log("No courseId found, showing CourseNotFound");
     return <CourseNotFound />;
   }
 
   if (slides.length === 0) {
-    console.log("No slides loaded, showing loading spinner");
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-complybrand-700"></div>
       </div>
     );
   }
-
-  console.log("[CoursePlayer] Rendering with:", {
-    currentSlideIndex,
-    resumeSlideIndex: resumeSlideRef.current,
-    slidesLength: slides.length,
-    slides,
-  });
 
   return (
     <div className="h-screen flex flex-col bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
@@ -276,10 +241,6 @@ const CoursePlayer = ({
                 onSkipBackward={handleSkipBackward}
                 resumeSlideIndex={resumeSlideRef.current}
               />
-              {console.log(
-                "[CoursePlayer] Rendering SlidePlayer with resumeSlideIndex:",
-                resumeSlideRef.current
-              )}
             </div>
           </div>
 

@@ -94,7 +94,6 @@ const UserDashboard = () => {
   useEffect(() => {
     if (tenantId) {
       localStorage.setItem("tenantId", tenantId);
-      console.log("Stored tenantId in localStorage:", tenantId);
     }
     // Remove currentQuiz from localStorage when dashboard loads
     localStorage.removeItem("currentQuiz");
@@ -111,7 +110,6 @@ const UserDashboard = () => {
       try {
         // Decode JWT to get user ID
         const decodedToken = decodeJWT(token);
-        console.log("Decoded token:", decodedToken);
 
         // Try different possible fields for user ID
         const userId =
@@ -158,8 +156,6 @@ const UserDashboard = () => {
         if (!coursesResponse.ok) {
           throw new Error("Failed to fetch courses");
         }
-
-        console.log("Courses response:", coursesResponse);
 
         const coursesData = await coursesResponse.json();
         // Map top-level fields into a properties object for UI compatibility
@@ -245,7 +241,6 @@ const UserDashboard = () => {
       )
         .then((res) => res.json())
         .then((data) => {
-          console.log("User dashboard courses API response:", data);
           setUserCourses(data);
         })
         .catch((err) => {
@@ -306,9 +301,7 @@ const UserDashboard = () => {
       : 0;
 
   const handleCourseSelect = (courseId: string) => {
-    console.log("Selected course ID:", courseId);
     const course = courses.find((c) => c.id === courseId);
-    console.log("Selected course:", course);
 
     if (course) {
       const defaultProperties = {
@@ -318,10 +311,6 @@ const UserDashboard = () => {
       };
 
       const courseProperties = course.properties || defaultProperties;
-      console.log(
-        "Course properties being passed to player:",
-        courseProperties
-      );
 
       navigate(
         `/dashboard/course/${courseId}/play?tenantId=${tenantId}&token=${token}&progress=${
@@ -590,13 +579,6 @@ const UserDashboard = () => {
                       userCourse?.canDownloadCertificate;
                     const certificateUrl = userCourse?.certificateUrl;
                     const canRetakeQuiz = userCourse?.canRetakeQuiz;
-
-                    // Log properties passed to CourseCard
-                    console.log(
-                      "Rendering CourseCard for course:",
-                      course.title,
-                      course.properties
-                    );
 
                     return (
                       <div key={course.id} className="relative">

@@ -118,7 +118,6 @@ const GeneralChatbot = ({
         const data = await response.json();
         setTenantDetails(data);
       } catch (error) {
-        console.error("Error fetching tenant details:", error);
         toast.error("Failed to load tenant details");
       }
     };
@@ -217,7 +216,6 @@ const GeneralChatbot = ({
         const coursesData = await response.json();
         setCourses(coursesData);
       } catch (error) {
-        console.error("Error fetching courses:", error);
         toast.error("Failed to load courses");
       } finally {
         setIsLoadingCourses(false);
@@ -256,13 +254,6 @@ const GeneralChatbot = ({
     try {
       if (selectedCourse) {
         // Course-specific chat
-        console.log("Sending request to course-specific chatbot with:", {
-          chatHistory: [...messages, userMessage],
-          presentation_url: courseMaterial?.materialUrl,
-          company_name: tenantDetails?.details.companyName || "Your Company",
-          pocs: pocs,
-        });
-
         const response = await fetch("http://localhost:8000/chatbot", {
           method: "POST",
           headers: {
@@ -277,20 +268,12 @@ const GeneralChatbot = ({
         });
 
         if (!response.ok) {
-          const errorData = await response.json().catch(() => null);
-          console.error("Error response:", {
-            status: response.status,
-            statusText: response.statusText,
-            errorData,
-          });
           throw new Error(
             `API error: ${response.status} ${response.statusText}`
           );
         }
 
         const data = await response.json();
-        console.log("Chatbot response:", data);
-
         const botReply =
           typeof data.response === "object" && data.response.response
             ? data.response.response
@@ -330,7 +313,6 @@ const GeneralChatbot = ({
         setMessages((prev) => [...prev, assistantMessage]);
       }
     } catch (error) {
-      console.error("Error sending message:", error);
       toast.error("Failed to get response from chatbot");
     } finally {
       setIsLoading(false);

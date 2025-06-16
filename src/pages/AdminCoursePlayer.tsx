@@ -103,7 +103,6 @@ const AdminCoursePlayer = () => {
         }
 
         const data = await response.json();
-        console.log("[AdminCoursePlayer] Explanations response:", data);
 
         // The response is an object with an explanations array
         const explanations = data.explanations || [];

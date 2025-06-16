@@ -136,15 +136,6 @@ const Navbar = ({ userRole, onLogin }: NavbarProps) => {
           domain: cleanDomain,
         };
 
-        console.log("Login Request Details:", {
-          url: `${import.meta.env.VITE_BACKEND_URL}/api/auth/login`,
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: requestBody,
-        });
-
         const response = await fetch(
           `${import.meta.env.VITE_BACKEND_URL}/api/auth/login`,
           {
@@ -157,14 +148,7 @@ const Navbar = ({ userRole, onLogin }: NavbarProps) => {
           }
         );
 
-        console.log("Response Status:", response.status);
-        console.log(
-          "Response Headers:",
-          Object.fromEntries(response.headers.entries())
-        );
-
         const responseData = await response.json();
-        console.log("Full Login Response:", responseData);
 
         if (!response.ok) {
           throw new Error(responseData.error || "Login failed");
@@ -172,7 +156,6 @@ const Navbar = ({ userRole, onLogin }: NavbarProps) => {
 
         // Store the token in localStorage
         localStorage.setItem("token", responseData.token);
-        console.log("Stored token:", responseData.token);
 
         // Decode the JWT token to get the tenant ID
         const tokenParts = responseData.token.split(".");
@@ -189,7 +172,6 @@ const Navbar = ({ userRole, onLogin }: NavbarProps) => {
 
         // Store the tenant ID
         localStorage.setItem("tenantId", tenantId);
-        console.log("Stored tenant ID:", tenantId);
 
         // Call the onLogin callback with the user role
         if (onLogin) {
@@ -205,7 +187,6 @@ const Navbar = ({ userRole, onLogin }: NavbarProps) => {
 
         setLoginDialogOpen(false);
       } catch (error) {
-        console.error("Login error:", error);
         if (error instanceof Error) {
           setErrorMessage(error.message || "Login failed. Please try again.");
         } else {

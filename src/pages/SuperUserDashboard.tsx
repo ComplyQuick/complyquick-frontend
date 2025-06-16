@@ -214,7 +214,6 @@ const SuperUserDashboard = () => {
           throw new Error("Failed to fetch courses");
         }
         const data = await response.json();
-        // Transform the data to convert learningObjectives and tags to arrays
         const transformedData = data.map((course: any) => {
           const learningObjectivesArr = course.learningObjectives
             ? course.learningObjectives
@@ -224,10 +223,6 @@ const SuperUserDashboard = () => {
           const tagsArr = course.tags
             ? course.tags.split(",").map((tag: string) => tag.trim())
             : [];
-          console.log(`Course: ${course.title}`, {
-            learningObjectivesArr,
-            tagsArr,
-          });
           return {
             ...course,
             learningObjectives: learningObjectivesArr,
@@ -244,7 +239,6 @@ const SuperUserDashboard = () => {
   };
 
   const handleOrganizationCreated = () => {
-    // Refresh tenants after a new one is created
     const fetchTenants = async () => {
       try {
         const response = await fetch(
