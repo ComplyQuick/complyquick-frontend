@@ -314,7 +314,7 @@ const QuizResults = () => {
   if (isGeneratingMCQ) {
     return (
       <div className="fixed inset-0 bg-white bg-opacity-80 z-50 flex items-center justify-center">
-        <Loader message="Please wait until the MCQ is generated" />
+        <Loader message="Please wait while we generate your assessment" />
       </div>
     );
   }

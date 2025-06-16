@@ -6,7 +6,7 @@ import {
   useSearchParams,
 } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Menu, X, LogIn, AtSign, Mail, ArrowLeft } from "lucide-react";
+import { Menu, X, LogIn, AtSign, Mail, ArrowLeft, LogOut } from "lucide-react";
 import { UserRole } from "../../App";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import {
@@ -60,7 +60,7 @@ const Navbar = ({ userRole, onLogin }: NavbarProps) => {
   const [searchParams] = useSearchParams();
   const token = searchParams.get("token");
   const tenantId = searchParams.get("tenantId");
-  const { setAuth } = useAuthStore();
+  const { setAuth, clearAuth } = useAuthStore();
 
   useEffect(() => {
     if (token && tenantId) {
@@ -120,22 +120,6 @@ const Navbar = ({ userRole, onLogin }: NavbarProps) => {
   };
 
   const handleLogin = async (type: "sso" | "credentials" = "credentials") => {
-    if (loginType === "employee" && type === "sso") {
-      // Mock SSO login for employees
-      toast.success(
-        `Redirecting to SSO provider for ${
-          credentials.domain || "your company"
-        }...`
-      );
-      setTimeout(() => {
-        if (onLogin) {
-          onLogin("employee");
-          window.location.href = "/dashboard";
-        }
-      }, 1500);
-      return;
-    }
-
     if (
       loginType === "admin" &&
       credentials.email &&
@@ -235,92 +219,14 @@ const Navbar = ({ userRole, onLogin }: NavbarProps) => {
     }
   };
 
-  const goBackToDomainStep = () => {
-    setDomainLoginStep("domain");
-  };
-
-  const handleGoogleLogin = () => {
-    window.location.href = `${
-      import.meta.env.VITE_BACKEND_URL
-    }/api/auth/google`;
-  };
-
-  const handleLoginModal = async () => {
-    if (!credentials.email || !credentials.password) {
-      toast.error("Please enter both email and password");
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      const response = await fetch(
-        `${import.meta.env.VITE_BACKEND_URL}/api/auth/login`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            email: credentials.email,
-            password: credentials.password,
-          }),
-        }
-      );
-
-      const responseData = await response.json();
-
-      if (!response.ok) {
-        throw new Error(responseData.message || "Login failed");
-      }
-
-      // Store the token and tenant ID
-      localStorage.setItem("token", responseData.token);
-      if (responseData.user?.tenantId) {
-        localStorage.setItem("tenantId", responseData.user.tenantId);
-        console.log("Stored tenant ID:", responseData.user.tenantId);
-      } else if (responseData.tenantId) {
-        localStorage.setItem("tenantId", responseData.tenantId);
-        console.log("Stored tenant ID:", responseData.tenantId);
-      } else {
-        // If tenant ID is not in the response, try to get it from the domain
-        try {
-          const domain = window.location.hostname;
-          const tenantResponse = await fetch(
-            `${
-              import.meta.env.VITE_BACKEND_URL
-            }/api/tenants/by-domain/${domain}`
-          );
-          if (tenantResponse.ok) {
-            const tenantData = await tenantResponse.json();
-            localStorage.setItem("tenantId", tenantData.id);
-            console.log("Stored tenant ID from domain:", tenantData.id);
-          }
-        } catch (error) {
-          console.error("Error fetching tenant by domain:", error);
-        }
-      }
-
-      // Redirect based on role
-      if (responseData.user.role === "admin") {
-        navigate("/admin-dashboard");
-      } else {
-        navigate("/employee-dashboard");
-      }
-    } catch (error) {
-      console.error("Login error:", error);
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : "Login failed. Please try again."
-      );
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   const handleEmployeeLogin = () => {
     window.location.href =
       "https://accounts.google.com/o/oauth2/v2/auth?response_type=code&client_id=988869669667-f62g9dtlmcmt1t5unl7cl9ni8edd0cup.apps.googleusercontent.com&redirect_uri=http://localhost:5000/api/auth/google/callback&scope=https://www.googleapis.com/auth/userinfo.email&access_type=offline&prompt=consent";
+  };
+
+  const handleLogout = () => {
+    clearAuth();
+    navigate("/");
   };
 
   return (
@@ -384,7 +290,7 @@ const Navbar = ({ userRole, onLogin }: NavbarProps) => {
                   <ThemeToggle />
                   <Button
                     variant="outline"
-                    onClick={() => (window.location.href = "/")}
+                    onClick={handleLogout}
                     className="hover:scale-105 transition-transform"
                   >
                     Logout
@@ -461,7 +367,7 @@ const Navbar = ({ userRole, onLogin }: NavbarProps) => {
                 <Button
                   variant="outline"
                   className="w-full justify-start"
-                  onClick={() => (window.location.href = "/")}
+                  onClick={handleLogout}
                 >
                   Logout
                 </Button>
@@ -534,7 +440,7 @@ const Navbar = ({ userRole, onLogin }: NavbarProps) => {
             </Button>
             <Button
               onClick={() => handleLogin()}
-              className="bg-complybrand-700 hover:bg-complybrand-800"
+              className="bg-complybrand-700 hover:bg-complybrand-800 text-white"
             >
               Login
             </Button>
@@ -587,13 +493,6 @@ const Navbar = ({ userRole, onLogin }: NavbarProps) => {
             </div>
           </div>
           <DialogFooter className="flex flex-col sm:flex-row sm:justify-between gap-2">
-            <Button
-              variant="outline"
-              className="w-full sm:w-auto"
-              onClick={() => handleLogin("sso")}
-            >
-              Login with SSO
-            </Button>
             <div className="flex flex-col sm:flex-row gap-2">
               <Button
                 variant="outline"
@@ -611,94 +510,6 @@ const Navbar = ({ userRole, onLogin }: NavbarProps) => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      {/* Employee Login Dialog - Credentials Step */}
-      <Dialog
-        open={
-          loginDialogOpen &&
-          loginType === "employee" &&
-          domainLoginStep === "credentials"
-        }
-        onOpenChange={(open) => {
-          setLoginDialogOpen(open);
-          if (!open) {
-            setLoginType("employee");
-            setDomainLoginStep("domain");
-          }
-        }}
-      >
-        <DialogContent className="sm:max-w-[425px] animate-scale-in">
-          <DialogHeader>
-            <DialogTitle>Employee Login</DialogTitle>
-            <DialogDescription>
-              Login with your {credentials.domain} credentials
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                name="email"
-                type="email"
-                placeholder={`username@${credentials.domain}`}
-                value={credentials.email}
-                onChange={handleCredentialChange}
-                autoComplete="email"
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                name="password"
-                type="password"
-                value={credentials.password}
-                onChange={handleCredentialChange}
-                autoComplete="current-password"
-              />
-            </div>
-          </div>
-          <DialogFooter className="flex flex-col sm:flex-row sm:justify-between gap-2">
-            <Button
-              variant="outline"
-              onClick={goBackToDomainStep}
-              className="w-full sm:w-auto flex items-center gap-1"
-            >
-              <ArrowLeft className="h-4 w-4" /> Back
-            </Button>
-            <div className="flex flex-col sm:flex-row gap-2">
-              <Button
-                variant="outline"
-                onClick={handleGoogleLogin}
-                className="flex items-center gap-1"
-              >
-                <Mail className="h-4 w-4" />
-                Login with Google
-              </Button>
-              <Button
-                onClick={() => handleLogin()}
-                className="bg-complybrand-700 hover:bg-complybrand-800"
-              >
-                Login
-              </Button>
-            </div>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Error Dialog */}
-      <AlertDialog open={errorDialogOpen} onOpenChange={setErrorDialogOpen}>
-        <AlertDialogContent className="animate-scale-in">
-          <AlertDialogHeader>
-            <AlertDialogTitle>Authentication Error</AlertDialogTitle>
-            <AlertDialogDescription>{errorMessage}</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogAction>Try Again</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </nav>
   );
 };

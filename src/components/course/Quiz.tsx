@@ -42,7 +42,6 @@ const Quiz = () => {
     const savedMcqs = localStorage.getItem("currentQuiz");
     if (savedMcqs) {
       const parsedMcqs = JSON.parse(savedMcqs);
-      console.log("Loaded MCQs:", parsedMcqs);
       setMcqs(parsedMcqs);
     } else {
       toast.error("Quiz data not found");
@@ -212,7 +211,6 @@ const Quiz = () => {
             certificate.
           </p>
         </div>
-
         <div className="mb-6">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl font-semibold">
@@ -295,6 +293,12 @@ const Quiz = () => {
               />
             ))}
           </div>
+        </div>
+        <div className="text-center text-xs text-gray-500 mt-4 mb-2">
+          *All names, symbols, and references used in this content are purely
+          fictional and intended for educational or illustrative purposes only.
+          Any resemblance to real persons, living or dead, or actual organizations
+          is purely coincidental.*
         </div>
       </Card>
       {/* Proctoring component */}

@@ -47,6 +47,7 @@ import { Loader } from "@/components/ui/loader";
 
 interface Course {
   id: string;
+  courseId: string;
   title: string;
   description: string;
   duration: string;
@@ -57,6 +58,12 @@ interface Course {
   retryType: "SAME" | "DIFFERENT";
   tags: string[];
   targetAudience: string;
+  isEnabled: boolean;
+  pocs?: Array<{
+    id: string;
+    name: string;
+    email: string;
+  }>;
   // Add other properties as needed
 }
 
@@ -653,7 +660,7 @@ const AdminDashboard = () => {
                         name: activity.name,
                         email: activity.email,
                         coursesCompleted: activity.totalCourses,
-                        totalCourses: activity.totalCourses,
+                        totalCourses: courses.length,
                         lastActivity: activity.status,
                       }))}
                     />
@@ -706,7 +713,7 @@ const AdminDashboard = () => {
                   <PlusCircle className="mr-1 h-4 w-4" /> Add Course
                 </Button>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 {(courseView === "active"
                   ? activeCourses
                   : inactiveCourses
@@ -729,102 +736,99 @@ const AdminDashboard = () => {
                       retryType: item.retryType,
                       isEnabled: item.isEnabled,
                     }}
+                    courseDetails={{
+                      id: item.id,
+                      title: item.title,
+                      description: item.description,
+                      learningObjectives: item.learningObjectives || "",
+                      properties: {
+                        mandatory: item.mandatory,
+                        skippable: item.skippable,
+                        retryType: item.retryType,
+                      },
+                      pocs: item.pocs || [],
+                    }}
                   />
                 ))}
               </div>
             </TabsContent>
 
             <TabsContent value="users" className="animate-fade-in">
-              <TenantUsersList tenantId={tenantId} />
+              <TenantUsersList
+                tenantId={tenantId}
+                totalCourses={courses.length}
+              />
             </TabsContent>
 
             <TabsContent value="courses" className="animate-fade-in">
-              <Card className="overflow-hidden bg-card/50 backdrop-blur-sm border border-border/50">
-                <CardHeader>
-                  <CardTitle>Courses</CardTitle>
-                  <CardDescription>
-                    View all compliance courses available to your organization
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {isLoadingCourses ? (
-                    <div className="text-center py-4">Loading courses...</div>
-                  ) : error ? (
-                    <div className="text-center text-red-500 py-4">{error}</div>
-                  ) : courses.length === 0 ? (
-                    <div className="text-center py-4">
-                      No courses available for your organization.
-                    </div>
-                  ) : (
-                    <div className="grid gap-4 md:grid-cols-3">
-                      {courses.map((course) => (
-                        <Card
-                          key={course.id}
-                          className="hover:shadow-md transition-all duration-300 transform hover:-translate-y-1 overflow-hidden bg-card/50 backdrop-blur-sm border border-border/50 cursor-pointer"
-                          onClick={() => handleCourseSelect(course)}
-                        >
-                          <CardHeader>
-                            <CardTitle>{course.title}</CardTitle>
-                            <CardDescription>
-                              {course.description}
-                            </CardDescription>
-                          </CardHeader>
-                          <CardContent>
-                            <p>Duration: {course.duration} minutes</p>
-                            <p>Tags: {course.tags}</p>
-                            <p>
-                              Learning Objectives: {course.learningObjectives}
-                            </p>
-                            <p>Target Audience: {course.targetAudience}</p>
-                          </CardContent>
-                        </Card>
-                      ))}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* Video Display Section */}
-              {selectedCourse && (
-                <div className="mt-8">
-                  <Card className="overflow-hidden bg-card/50 backdrop-blur-sm border border-border/50">
-                    <CardHeader>
-                      <CardTitle>
-                        {selectedCourse.title} - Video Presentation
-                      </CardTitle>
-                      <CardDescription>
-                        {isGeneratingVideo
-                          ? "Generating video..."
-                          : "Watch the course presentation"}
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      {isGeneratingVideo ? (
-                        <div className="flex flex-col items-center justify-center py-8">
-                          <Loader2 className="h-8 w-8 animate-spin text-complybrand-600" />
-                          <p className="mt-4 text-sm text-muted-foreground">
-                            Generating video presentation...
-                          </p>
-                        </div>
-                      ) : videoUrl ? (
-                        <div className="aspect-video w-full">
-                          <video
-                            controls
-                            className="w-full h-full rounded-lg"
-                            src={videoUrl}
-                          >
-                            Your browser does not support the video tag.
-                          </video>
-                        </div>
-                      ) : (
-                        <div className="text-center py-8 text-muted-foreground">
-                          Click on a course to generate its video presentation
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
+              <div className="mt-8 animate-fade-in flex items-center justify-between mb-4">
+                <div className="flex items-center gap-4">
+                  <h3 className="text-lg font-medium mb-0">Courses</h3>
+                  <span className="flex items-center gap-2 ml-4">
+                    <span
+                      className={`cursor-pointer select-none transition-colors ${
+                        courseView === "active"
+                          ? "text-gray-900 dark:text-white font-semibold"
+                          : "text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+                      }`}
+                      onClick={() => setCourseView("active")}
+                      style={{ opacity: courseView === "active" ? 1 : 0.5 }}
+                    >
+                      Active Courses
+                    </span>
+                    <span className="mx-2 text-gray-400">|</span>
+                    <span
+                      className={`cursor-pointer select-none transition-colors ${
+                        courseView === "inactive"
+                          ? "text-gray-900 dark:text-white font-semibold"
+                          : "text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+                      }`}
+                      onClick={() => setCourseView("inactive")}
+                      style={{ opacity: courseView === "inactive" ? 1 : 0.5 }}
+                    >
+                      Inactive Courses
+                    </span>
+                  </span>
                 </div>
-              )}
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                {(courseView === "active"
+                  ? activeCourses
+                  : inactiveCourses
+                ).map((item) => (
+                  <CourseCard
+                    key={item.id}
+                    id={item.id}
+                    courseId={item.courseId}
+                    title={item.title}
+                    description={item.description}
+                    duration={item.duration || ""}
+                    enrolledUsers={item.enrolledUsers}
+                    userRole="admin"
+                    tenantId={tenantId || ""}
+                    token={localStorage.getItem("token") || ""}
+                    learningObjectives={item.learningObjectives || ""}
+                    properties={{
+                      mandatory: item.mandatory,
+                      skippable: item.skippable,
+                      retryType: item.retryType,
+                      isEnabled: item.isEnabled,
+                    }}
+                    courseDetails={{
+                      id: item.id,
+                      title: item.title,
+                      description: item.description,
+                      learningObjectives: item.learningObjectives || "",
+                      properties: {
+                        mandatory: item.mandatory,
+                        skippable: item.skippable,
+                        retryType: item.retryType,
+                      },
+                      pocs: item.pocs || [],
+                    }}
+                  />
+                ))}
+              </div>
             </TabsContent>
           </Tabs>
         </div>
@@ -895,69 +899,13 @@ const AdminDashboard = () => {
             <Button
               onClick={handleAddCourse}
               disabled={selectedCourses.length === 0}
-              className="bg-complybrand-600 hover:bg-complybrand-700"
+              className="bg-complybrand-600 hover:bg-complybrand-700 text-white"
             >
               Add Selected Courses
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      {/* Video Generation Section */}
-      {selectedCourse && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="bg-card w-full max-w-4xl mx-4 rounded-lg shadow-xl">
-            <div className="p-6">
-              <h2 className="text-2xl font-bold mb-4">
-                {selectedCourse.title} - Video Generation
-              </h2>
-              {isGeneratingVideo ? (
-                <div className="flex flex-col items-center justify-center py-8">
-                  <Loader2 className="h-12 w-12 animate-spin text-complybrand-600 mb-4" />
-                  <p className="text-lg text-muted-foreground">
-                    Generating video presentation...
-                  </p>
-                  <p className="text-sm text-muted-foreground mt-2">
-                    This may take a few minutes. Please don't close this window.
-                  </p>
-                </div>
-              ) : videoUrl ? (
-                <div className="space-y-4">
-                  <div className="aspect-video w-full bg-black rounded-lg overflow-hidden">
-                    <video controls className="w-full h-full" src={videoUrl}>
-                      Your browser does not support the video tag.
-                    </video>
-                  </div>
-                  <div className="flex justify-end">
-                    <Button
-                      onClick={() => {
-                        setSelectedCourse(null);
-                        setVideoUrl(null);
-                      }}
-                      variant="outline"
-                    >
-                      Close
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                <div className="text-center py-8">
-                  <p className="text-muted-foreground">
-                    Click the button below to start generating the video
-                    presentation.
-                  </p>
-                  <Button
-                    onClick={() => handleCourseSelect(selectedCourse)}
-                    className="mt-4 bg-complybrand-600 hover:bg-complybrand-700"
-                  >
-                    Generate Video
-                  </Button>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Assign Course Modal */}
       <Dialog open={showAssignModal} onOpenChange={setShowAssignModal}>

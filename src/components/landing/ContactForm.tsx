@@ -267,7 +267,7 @@ const ContactForm = () => {
                           Processing...
                         </span>
                       ) : (
-                        <span className="flex items-center">
+                        <span className="flex items-center text-white">
                           Submit Request <SendIcon className="ml-2 h-4 w-4 animate-[pulse_2s_infinite]" />
                         </span>
                       )}

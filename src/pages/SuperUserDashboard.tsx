@@ -89,6 +89,19 @@ interface User {
   status?: string;
 }
 
+interface CourseEnrolledUsers {
+  courseId: string;
+  totalEnrolledUsers: number;
+}
+
+interface RecentTenant {
+  id: string;
+  name: string;
+  domain: string;
+  userCount: number;
+  enabledCourseCount: number;
+}
+
 const SuperUserDashboard = () => {
   const [activeTab, setActiveTab] = useState("overview");
   const [organizationDialogOpen, setOrganizationDialogOpen] = useState(false);
@@ -102,6 +115,12 @@ const SuperUserDashboard = () => {
   const [showUpdateModal, setShowUpdateModal] = useState(false);
   const [updateCourse, setUpdateCourse] = useState<Course | null>(null);
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [enrolledUsersData, setEnrolledUsersData] = useState<
+    CourseEnrolledUsers[]
+  >([]);
+  const [recentTenants, setRecentTenants] = useState<RecentTenant[]>([]);
+
+  const backendUrl = import.meta.env.VITE_BACKEND_URL || "";
 
   useEffect(() => {
     const fetchData = async () => {
@@ -114,7 +133,19 @@ const SuperUserDashboard = () => {
           throw new Error("Failed to fetch courses");
         }
         const coursesData = await coursesResponse.json();
-        setCourses(coursesData);
+        // Transform the data to convert learningObjectives and tags to arrays
+        const transformedData = coursesData.map((course: any) => ({
+          ...course,
+          learningObjectives: course.learningObjectives
+            ? course.learningObjectives
+                .split(",")
+                .map((obj: string) => obj.trim())
+            : [],
+          tags: course.tags
+            ? course.tags.split(",").map((tag: string) => tag.trim())
+            : [],
+        }));
+        setCourses(transformedData);
 
         // Fetch tenants
         const tenantsResponse = await fetch(
@@ -138,6 +169,40 @@ const SuperUserDashboard = () => {
     fetchData();
   }, []);
 
+  useEffect(() => {
+    // Fetch enrolled users count for all courses
+    const fetchEnrolledUsers = async () => {
+      try {
+        const response = await fetch(
+          `${backendUrl}/api/superadmin/courses/enrolled-users`
+        );
+        if (!response.ok) throw new Error("Failed to fetch enrolled users");
+        const data = await response.json();
+        setEnrolledUsersData(data);
+      } catch (e) {
+        // Optionally handle error
+      }
+    };
+    fetchEnrolledUsers();
+  }, []);
+
+  useEffect(() => {
+    // Fetch recent tenants with course counts
+    const fetchRecentTenants = async () => {
+      try {
+        const response = await fetch(
+          `${backendUrl}/api/superadmin/tenants/recent`
+        );
+        if (!response.ok) throw new Error("Failed to fetch recent tenants");
+        const data = await response.json();
+        setRecentTenants(data);
+      } catch (e) {
+        // Optionally handle error
+      }
+    };
+    fetchRecentTenants();
+  }, [backendUrl]);
+
   const handleCourseCreated = () => {
     // Refresh courses after a new one is created
     const fetchCourses = async () => {
@@ -149,9 +214,28 @@ const SuperUserDashboard = () => {
           throw new Error("Failed to fetch courses");
         }
         const data = await response.json();
-        setCourses(data);
+        // Transform the data to convert learningObjectives and tags to arrays
+        const transformedData = data.map((course: any) => {
+          const learningObjectivesArr = course.learningObjectives
+            ? course.learningObjectives
+                .split(",")
+                .map((obj: string) => obj.trim())
+            : [];
+          const tagsArr = course.tags
+            ? course.tags.split(",").map((tag: string) => tag.trim())
+            : [];
+          console.log(`Course: ${course.title}`, {
+            learningObjectivesArr,
+            tagsArr,
+          });
+          return {
+            ...course,
+            learningObjectives: learningObjectivesArr,
+            tags: tagsArr,
+          };
+        });
+        setCourses(transformedData);
       } catch (error) {
-        console.error("Error fetching courses:", error);
         toast.error("Failed to refresh courses");
       }
     };
@@ -172,7 +256,6 @@ const SuperUserDashboard = () => {
         const data = await response.json();
         setTenants(data);
       } catch (error) {
-        console.error("Error fetching tenants:", error);
         toast.error("Failed to refresh tenants");
       }
     };
@@ -263,9 +346,6 @@ const SuperUserDashboard = () => {
                     0
                   )}
                 </div>
-                {/* <p className="text-xs text-muted-foreground">
-                  +43 from last month
-                </p> */}
               </CardContent>
             </Card>
           </div>
@@ -295,43 +375,55 @@ const SuperUserDashboard = () => {
               >
                 Courses
               </TabsTrigger>
-              <TabsTrigger
+              {/* <TabsTrigger
                 value="users"
                 className="data-[state=active]:bg-complybrand-600 data-[state=active]:text-white"
               >
                 Users
-              </TabsTrigger>
+              </TabsTrigger> */}
             </TabsList>
 
             <TabsContent value="overview" className="space-y-4 animate-fade-in">
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {isLoading ? (
-                  <div className="col-span-full text-center py-8">
-                    <p className="text-muted-foreground">Loading courses...</p>
-                  </div>
-                ) : error ? (
-                  <div className="col-span-full text-center py-8">
-                    <p className="text-destructive">{error}</p>
-                  </div>
-                ) : courses.length > 0 ? (
-                  courses.slice(0, 3).map((course) => (
-                    <CourseCard
-                      key={course.id}
-                      id={course.id}
-                      title={course.title}
-                      description={course.description}
-                      duration={`${course.duration} minutes`}
-                      enrolledCount={0} // This would need to be fetched from the backend
-                      userRole="superuser"
-                    />
-                  ))
-                ) : (
-                  <div className="col-span-full text-center py-8">
-                    <p className="text-muted-foreground">
-                      No courses available
-                    </p>
-                  </div>
-                )}
+              <div className="px-8">
+                <div className="grid w-full gap-6 md:grid-cols-2 lg:grid-cols-4">
+                  {isLoading ? (
+                    <div className="col-span-full text-center py-8">
+                      <p className="text-muted-foreground">
+                        Loading courses...
+                      </p>
+                    </div>
+                  ) : error ? (
+                    <div className="col-span-full text-center py-8">
+                      <p className="text-destructive">{error}</p>
+                    </div>
+                  ) : courses.length > 0 ? (
+                    courses
+                      .slice(0, 3)
+                      .map((course) => (
+                        <CourseCard
+                          key={course.id}
+                          id={course.id}
+                          title={course.title}
+                          description={course.description}
+                          duration={`${course.duration} minutes`}
+                          enrolledUsers={
+                            enrolledUsersData.find(
+                              (c) => c.courseId === course.id
+                            )?.totalEnrolledUsers || 0
+                          }
+                          userRole="superuser"
+                          learningObjectives={course.learningObjectives}
+                          tags={course.tags}
+                        />
+                      ))
+                  ) : (
+                    <div className="col-span-full text-center py-8">
+                      <p className="text-muted-foreground">
+                        No courses available
+                      </p>
+                    </div>
+                  )}
+                </div>
               </div>
 
               <Card className="mt-6 overflow-hidden bg-card/50 backdrop-blur-sm border border-border/50">
@@ -353,8 +445,8 @@ const SuperUserDashboard = () => {
                       <div className="text-center py-8">
                         <p className="text-destructive">{error}</p>
                       </div>
-                    ) : tenants.length > 0 ? (
-                      tenants.slice(0, 3).map((tenant) => (
+                    ) : recentTenants.length > 0 ? (
+                      recentTenants.map((tenant) => (
                         <div
                           key={tenant.id}
                           className="flex items-center p-3 rounded-md hover:bg-muted/20 transition-all duration-200"
@@ -364,8 +456,9 @@ const SuperUserDashboard = () => {
                               {tenant.name}
                             </p>
                             <p className="text-sm text-muted-foreground">
-                              {tenant.users?.length || 0} users ·{" "}
-                              {tenant.courses?.length || 0} courses
+                              {tenant.userCount} users ·{" "}
+                              {tenant.enabledCourseCount} courses (
+                              {tenant.enabledCourseCount} enabled)
                             </p>
                           </div>
                           <div className="ml-auto font-medium">
@@ -376,7 +469,7 @@ const SuperUserDashboard = () => {
                     ) : (
                       <div className="text-center py-8">
                         <p className="text-muted-foreground">
-                          No organizations available
+                          No recent organizations found.
                         </p>
                       </div>
                     )}
@@ -409,91 +502,98 @@ const SuperUserDashboard = () => {
                         <p className="text-destructive">{error}</p>
                       </div>
                     ) : tenants.length > 0 ? (
-                      tenants.map((tenant) => (
-                        <div
-                          key={tenant.id}
-                          className="flex items-center p-4 border border-border/30 rounded-md hover:bg-muted/20 transition-all duration-200"
-                        >
-                          <div className="space-y-1">
-                            <p className="text-sm font-medium leading-none">
-                              {tenant.name}
-                            </p>
-                            <p className="text-sm text-muted-foreground">
-                              {tenant.users?.length || 0} users ·{" "}
-                              {tenant.courses?.length || 0} courses
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              Admin: {tenant.adminEmail}
-                            </p>
-                          </div>
-                          <div className="ml-auto">
-                            <Menu
-                              as="div"
-                              className="relative inline-block text-left"
-                            >
-                              <Menu.Button className="p-1 rounded-full hover:bg-muted focus:outline-none">
-                                <MoreVertical className="h-5 w-5 text-gray-500" />
-                              </Menu.Button>
-                              <Menu.Items
-                                className="absolute right-0 bottom-full mb-2 w-auto origin-bottom-right bg-transparent border-none shadow-none z-[9999]"
-                                style={{ zIndex: 9999 }}
+                      tenants.map((tenant) => {
+                        const recent = recentTenants.find(
+                          (t) => t.id === tenant.id
+                        );
+                        return (
+                          <div
+                            key={tenant.id}
+                            className="flex items-center p-4 border border-border/30 rounded-md hover:bg-muted/20 transition-all duration-200"
+                          >
+                            <div className="space-y-1">
+                              <p className="text-sm font-medium leading-none">
+                                {tenant.name}
+                              </p>
+                              <p className="text-sm text-muted-foreground">
+                                {tenant.users?.length || 0} users ·{" "}
+                                {recent?.enabledCourseCount ?? 0} courses (
+                                {recent?.enabledCourseCount ?? 0} enabled)
+                              </p>
+                              <span className="block text-xs text-muted-foreground">
+                                Admin: {tenant.adminEmail}
+                              </span>
+                            </div>
+                            <div className="ml-auto">
+                              <Menu
+                                as="div"
+                                className="relative inline-block text-left"
                               >
-                                <Menu.Item>
-                                  {({ active }) => (
-                                    <button
-                                      className="px-2 py-1 rounded-xl font-semibold text-m text-white bg-red-600 hover:bg-red-700 transition flex items-center gap-1"
-                                      style={{ minWidth: 80 }}
-                                      onClick={async () => {
-                                        if (
-                                          window.confirm(
-                                            "Are you sure you want to delete this organization? This action cannot be undone."
-                                          )
-                                        ) {
-                                          try {
-                                            const res = await fetch(
-                                              `${
-                                                import.meta.env.VITE_BACKEND_URL
-                                              }/api/superadmin/tenant/${
-                                                tenant.id
-                                              }`,
-                                              {
-                                                method: "DELETE",
-                                                headers: {
-                                                  "Content-Type":
-                                                    "application/json",
-                                                },
-                                              }
-                                            );
-                                            if (!res.ok)
-                                              throw new Error(
+                                <Menu.Button className="p-1 rounded-full hover:bg-muted focus:outline-none">
+                                  <MoreVertical className="h-5 w-5 text-gray-500" />
+                                </Menu.Button>
+                                <Menu.Items
+                                  className="absolute right-0 bottom-full mb-2 w-auto origin-bottom-right bg-transparent border-none shadow-none z-[9999]"
+                                  style={{ zIndex: 9999 }}
+                                >
+                                  <Menu.Item>
+                                    {({ active }) => (
+                                      <button
+                                        className="px-2 py-1 rounded-xl font-semibold text-m text-white bg-red-600 hover:bg-red-700 transition flex items-center gap-1"
+                                        style={{ minWidth: 80 }}
+                                        onClick={async () => {
+                                          if (
+                                            window.confirm(
+                                              "Are you sure you want to delete this organization? This action cannot be undone."
+                                            )
+                                          ) {
+                                            try {
+                                              const res = await fetch(
+                                                `${
+                                                  import.meta.env
+                                                    .VITE_BACKEND_URL
+                                                }/api/superadmin/tenant/${
+                                                  tenant.id
+                                                }`,
+                                                {
+                                                  method: "DELETE",
+                                                  headers: {
+                                                    "Content-Type":
+                                                      "application/json",
+                                                  },
+                                                }
+                                              );
+                                              if (!res.ok)
+                                                throw new Error(
+                                                  "Failed to delete organization"
+                                                );
+                                              setTenants((prev) =>
+                                                prev.filter(
+                                                  (t) => t.id !== tenant.id
+                                                )
+                                              );
+                                              toast.success(
+                                                "Organization deleted successfully"
+                                              );
+                                            } catch (err) {
+                                              toast.error(
                                                 "Failed to delete organization"
                                               );
-                                            setTenants((prev) =>
-                                              prev.filter(
-                                                (t) => t.id !== tenant.id
-                                              )
-                                            );
-                                            toast.success(
-                                              "Organization deleted successfully"
-                                            );
-                                          } catch (err) {
-                                            toast.error(
-                                              "Failed to delete organization"
-                                            );
+                                            }
                                           }
-                                        }
-                                      }}
-                                    >
-                                      <Trash2 className="h-4 w-4" />
-                                      Delete
-                                    </button>
-                                  )}
-                                </Menu.Item>
-                              </Menu.Items>
-                            </Menu>
+                                        }}
+                                      >
+                                        <Trash2 className="h-4 w-4" />
+                                        Delete
+                                      </button>
+                                    )}
+                                  </Menu.Item>
+                                </Menu.Items>
+                              </Menu>
+                            </div>
                           </div>
-                        </div>
-                      ))
+                        );
+                      })
                     ) : (
                       <div className="text-center py-8">
                         <p className="text-muted-foreground">
@@ -516,67 +616,79 @@ const SuperUserDashboard = () => {
                 mode="update"
                 onCourseCreated={handleCourseCreated}
               />
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {isLoading ? (
-                  <div className="col-span-full text-center py-8">
-                    <p className="text-muted-foreground">Loading courses...</p>
-                  </div>
-                ) : error ? (
-                  <div className="col-span-full text-center py-8">
-                    <p className="text-destructive">{error}</p>
-                  </div>
-                ) : courses.length > 0 ? (
-                  courses.map((course) => (
-                    <div key={course.id} className="relative">
-                      <CourseCard
-                        id={course.id}
-                        title={course.title}
-                        description={course.description}
-                        duration={`${course.duration} minutes`}
-                        enrolledCount={0}
-                        userRole="superuser"
-                        onUpdateCourse={() => setUpdateCourse(course)}
-                      />
-                      {dropdownOpen &&
-                        (course.id === selectedCourse?.id ? (
-                          <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded shadow-lg mt-2 min-w-[120px] absolute right-0">
-                            <button
-                              className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800 flex items-center gap-2"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setDropdownOpen(false);
-                                if (onUpdateCourse) onUpdateCourse();
-                              }}
-                            >
-                              <Pencil className="h-4 w-4" />
-                              Update Course
-                            </button>
-                            <button
-                              className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100 dark:hover:bg-gray-800 flex items-center gap-2"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setDropdownOpen(false);
-                                setShowCourseActions(true);
-                              }}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                              Delete Course
-                            </button>
-                          </div>
-                        ) : null)}
+              <div className="px-8">
+                <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+                  {isLoading ? (
+                    <div className="col-span-full text-center py-8">
+                      <p className="text-muted-foreground">
+                        Loading courses...
+                      </p>
                     </div>
-                  ))
-                ) : (
-                  <div className="col-span-full text-center py-8">
-                    <p className="text-muted-foreground">
-                      No courses available
-                    </p>
-                  </div>
-                )}
+                  ) : error ? (
+                    <div className="col-span-full text-center py-8">
+                      <p className="text-destructive">{error}</p>
+                    </div>
+                  ) : courses.length > 0 ? (
+                    courses.map((course) => (
+                      <div key={course.id} className="relative">
+                        <CourseCard
+                          id={course.id}
+                          title={course.title}
+                          description={course.description}
+                          duration={`${course.duration} minutes`}
+                          enrolledUsers={
+                            enrolledUsersData.find(
+                              (c) => c.courseId === course.id
+                            )?.totalEnrolledUsers || 0
+                          }
+                          userRole="superuser"
+                          onUpdateCourse={() => setUpdateCourse(course)}
+                          learningObjectives={course.learningObjectives}
+                          tags={course.tags}
+                        />
+                        {dropdownOpen &&
+                          (course.id === selectedCourse?.id ? (
+                            <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded shadow-lg mt-2 min-w-[120px] absolute right-0">
+                              <button
+                                className="w-full text-left text-white px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800 flex items-center gap-2"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setDropdownOpen(false);
+                                  if (onUpdateCourse) onUpdateCourse();
+                                }}
+                              >
+                                <Pencil className="h-4 w-4 text-white bg-green-600" />
+                                <span className="text-white">
+                                  Update Course
+                                </span>
+                              </button>
+                              <button
+                                className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100 dark:hover:bg-gray-800 flex items-center gap-2"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setDropdownOpen(false);
+                                  setShowCourseActions(true);
+                                }}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                                Delete Course
+                              </button>
+                            </div>
+                          ) : null)}
+                      </div>
+                    ))
+                  ) : (
+                    <div className="col-span-full text-center py-8">
+                      <p className="text-muted-foreground">
+                        No courses available
+                      </p>
+                    </div>
+                  )}
+                </div>
               </div>
             </TabsContent>
 
-            <TabsContent value="users" className="animate-fade-in">
+            {/* <TabsContent value="users" className="animate-fade-in">
               <Card className="overflow-hidden bg-card/50 backdrop-blur-sm border border-border/50">
                 <CardContent className="pt-6">
                   <UsersList
@@ -595,7 +707,7 @@ const SuperUserDashboard = () => {
                   />
                 </CardContent>
               </Card>
-            </TabsContent>
+            </TabsContent> */}
           </Tabs>
         </div>
       </main>

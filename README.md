@@ -105,7 +105,7 @@ npm install
 
 3. Configure environment variables in `frontend/.env`:
 ```env
-VITE_BACKEND_URL=http://localhost:8000
+VITE_BACKEND_URL=http://localhost:5000
 VITE_GOOGLE_CLIENT_ID=your_google_client_id
 ```
 
@@ -135,7 +135,7 @@ python scripts/seed_data.py
    - Enable Google Drive API
    - Create OAuth 2.0 credentials
    - Add authorized redirect URIs:
-     - `http://localhost:8000/auth/google/callback`
+     - `http://localhost:5000/auth/google/callback`
      - `http://localhost:5173/auth/callback`
 
 2. Configure JWT:

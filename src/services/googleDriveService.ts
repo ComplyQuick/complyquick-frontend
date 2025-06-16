@@ -6,11 +6,6 @@ const CLIENT_ID = import.meta.env.VITE_GOOGLE_DRIVE_CLIENT_ID;
 const CLIENT_SECRET = import.meta.env.VITE_GOOGLE_DRIVE_CLIENT_SECRET;
 const REDIRECT_URI = import.meta.env.VITE_GOOGLE_DRIVE_REDIRECT_URI;
 
-console.log("client_id", CLIENT_ID);
-console.log("client_secret", CLIENT_SECRET);
-console.log("refresh_token", REFRESH_TOKEN);
-console.log("redirect_uri", REDIRECT_URI);
-
 async function getAccessToken() {
   const response = await fetch("https://oauth2.googleapis.com/token", {
     method: "POST",

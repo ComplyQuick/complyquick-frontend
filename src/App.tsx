@@ -15,8 +15,7 @@ import SuperUserDashboard from "./pages/SuperUserDashboard";
 import AdminDashboard from "./pages/AdminDashboard";
 import UserDashboard from "./pages/UserDashboard";
 import CoursePlayer from "./pages/CoursePlayer";
-import CourseDetails from "./pages/CourseDetails";
-import QuizPage from "./pages/QuizPage";
+import AdminCoursePlayer from "./pages/AdminCoursePlayer";
 import ResultPage from "./pages/ResultPage";
 import { useState } from "react";
 import { ThemeProvider } from "next-themes";
@@ -27,6 +26,7 @@ import QuizResults from "./pages/QuizResults";
 import Certificate from "@/components/course/Certificate";
 import Login from "./pages/Login";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
+import AdminCourseExplanations from "@/pages/AdminCourseExplanations";
 
 // Mock authentication for demonstration purposes
 // In a real app, we'd use proper authentication like Auth0, Clerk, or Supabase
@@ -86,12 +86,32 @@ const App = () => {
                     </ProtectedRoute>
                   }
                 />
-                <Route path="/admin/dashboard" element={<AdminDashboard />} />
-                <Route path="/dashboard" element={<UserDashboard />} />
                 <Route
+                  path="/admin/dashboard"
+                  element={
+                    <ProtectedRoute requiredRole="ADMIN">
+                      <AdminDashboard />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/admin/course/:courseId/play"
+                  element={
+                    <ProtectedRoute requiredRole="ADMIN">
+                      <AdminCoursePlayer />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/dashboard"
+                  element={
+                      <UserDashboard />
+                  }
+                />
+                {/* <Route
                   path="/dashboard/course/:courseId"
                   element={<CourseDetails />}
-                />
+                /> */}
                 <Route
                   path="/dashboard/course/:courseId/play"
                   element={<CoursePlayerWrapper />}
@@ -99,6 +119,10 @@ const App = () => {
                 <Route
                   path="/dashboard/course/:courseId/quiz"
                   element={<Quiz />}
+                />
+                <Route
+                  path="/admin/course/:courseId/explanations"
+                  element={<AdminCourseExplanations />}
                 />
                 <Route
                   path="/dashboard/course/:courseId/result"

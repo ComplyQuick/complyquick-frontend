@@ -26,8 +26,7 @@ const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) => {
     return <>{children}</>;
   } catch (error) {
     console.error("Error decoding token:", error);
-    // If there's an error decoding the token, redirect to login
-    return <Navigate to="/login" state={{ from: location }} replace />;
+    return <Navigate to="/" state={{ from: location }} replace />;
   }
 };
 

@@ -17,6 +17,11 @@ import {
   MoreVertical,
   Trash2,
   Pencil,
+  Play,
+  PlayCircle,
+  Download,
+  Clock,
+  Check,
 } from "lucide-react";
 import {
   Tooltip,
@@ -54,6 +59,7 @@ interface CourseCardProps {
     isEnabled?: boolean;
   } | null;
   learningObjectives?: string;
+  tags?: string;
   onClick?: () => void;
   onTakeQuiz?: () => void;
   canRetakeQuiz?: boolean;
@@ -93,6 +99,7 @@ const CourseCard = ({
   className = "",
   properties = null,
   learningObjectives = "",
+  tags,
   onClick,
   onTakeQuiz,
   canRetakeQuiz = false,
@@ -111,6 +118,7 @@ const CourseCard = ({
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const [showCourseActions, setShowCourseActions] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
 
   const defaultProperties = {
     mandatory: true,
@@ -122,18 +130,23 @@ const CourseCard = ({
   const courseProperties = properties || defaultProperties;
   const isMandatory = courseProperties.mandatory;
 
-  const headerGradient = isMandatory
-    ? "bg-[linear-gradient(93deg,_#A80000_-30%,_#1A294C_60%)]"
-    : "bg-[linear-gradient(93deg,_#3D60B2_-70.32%,_#1A294C_39.28%)]";
+  // SVG patterns for backgrounds
+  const mandatoryPattern =
+    'url(\'data:image/svg+xml;utf8,<svg width="100" height="100" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><rect width="20" height="20" fill="%23f87171"/><path d="M0 0L20 20M20 0L0 20" stroke="%23fff" stroke-width="1" stroke-opacity="0.08"/></svg>\')';
+  const nonMandatoryPattern =
+    'url(\'data:image/svg+xml;utf8,<svg width="100" height="100" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><rect width="20" height="20" fill="%233b82f6"/><circle cx="10" cy="10" r="2" fill="%23fff" fill-opacity="0.08"/></svg>\')';
+  const topBg = isMandatory
+    ? "bg-rose-400 dark:bg-rose-600"
+    : "bg-blue-400 dark:bg-blue-600";
+  const pattern = isMandatory ? mandatoryPattern : nonMandatoryPattern;
 
-  const titleColor = isMandatory ? "text-[#FFB4B4]" : "text-[#92AAFF]";
-
-  const cardBorder = "border border-[#313F5A]/50";
-  const cardShadow = "shadow-none";
+  const titleColor = "text-white";
+  const cardBorder = "border-0";
+  const cardShadow = "shadow-lg hover:shadow-xl transition-all duration-300";
 
   const progressIndicator = isMandatory
-    ? "bg-[linear-gradient(93deg,_#A80000_-30%,_#1A294C_60%)]"
-    : "bg-[#3D60B2]";
+    ? "bg-gradient-to-r from-red-400 to-red-500 dark:from-red-500 dark:to-red-600"
+    : "bg-gradient-to-r from-blue-400 to-blue-500 dark:from-blue-500 dark:to-blue-600";
 
   const getButtonText = () => {
     if (progress === 100) return "Start Again";
@@ -245,49 +258,295 @@ const CourseCard = ({
   return (
     <>
       <Card
-        style={{ backgroundColor: "#000000" }}
-        className={`overflow-hidden min-h-[220px] ${cardBorder} ${cardShadow} rounded-2xl ${className} transition-all duration-300 transform highlight-shadow-hover relative`}
-        onClick={userRole !== "employee" ? onClick : undefined}
-        onMouseDown={() => {
-          if (userRole === "employee") setShowCardOverlay(true);
-        }}
-        onMouseUp={() => {
-          if (userRole === "employee")
-            setTimeout(() => setShowCardOverlay(false), 300);
-        }}
-        onMouseLeave={() => {
-          if (userRole === "employee") setShowCardOverlay(false);
-        }}
+        className={`relative mx-auto rounded-2xl shadow-lg border-0 flex flex-col items-center bg-white dark:bg-neutral-900 overflow-hidden
+          ${
+            userRole === "employee" ? "h-[320px]" : "w-[320px] h-[340px]"
+          } ${className}`}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
       >
-        {/* Animation overlay for employee */}
-        {userRole === "employee" && showCardOverlay && (
-          <div className="absolute inset-0 z-20 pointer-events-none animate-pulse bg-white/10 rounded-2xl transition-all duration-300" />
-        )}
-
-        {/* Chatbot Icon for employee role */}
-        {userRole === "employee" && (
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  onClick={handleChatbotClick}
-                  className="absolute bottom-4 left-4 z-30 p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
+        {/* Top colored section with pattern (reduced height for employee) */}
+        <div
+          className={`w-full ${
+            userRole === "employee" ? "h-[120px]" : "flex-[4]"
+          } flex items-center justify-center ${topBg} relative`}
+          style={{
+            backgroundImage: pattern,
+            backgroundSize: "cover",
+            backgroundRepeat: "repeat",
+            height: userRole === "employee" ? "150px" : "60%",
+          }}
+        >
+          {/* Overlay large course title letters for context */}
+          <span
+            className="absolute inset-0 flex items-center justify-center select-none pointer-events-none overflow-hidden"
+            aria-hidden="true"
+          >
+            <span
+              className="font-extrabold text-[2.2rem] md:text-[3rem] lg:text-[3.5rem] tracking-tighter uppercase opacity-10 text-white dark:text-white"
+              style={{
+                whiteSpace: "nowrap",
+                letterSpacing: "-.05em",
+                left: 0,
+                top: 0,
+                position: "absolute",
+                transform: "rotate(-8deg) translateY(10px)",
+                width: "100%",
+                textAlign: "center",
+              }}
+            >
+              {(courseDetails?.title || title).slice(0, 8)}
+            </span>
+            {/* Overlay up to 4 tags at random positions (now for all roles) */}
+            {(() => {
+              let tagList: string[] = [];
+              if (Array.isArray(tags)) {
+                tagList = tags;
+              } else if (typeof tags === "string") {
+                tagList = tags
+                  .split(",")
+                  .map((t) => t.trim())
+                  .filter(Boolean);
+              }
+              const tagPositions = [
+                { top: "18%", left: "12%", rotate: "-8deg" },
+                { top: "60%", left: "20%", rotate: "12deg" },
+                { top: "35%", right: "10%", rotate: "6deg" },
+                { bottom: "12%", left: "40%", rotate: "-14deg" },
+              ];
+              return tagList.slice(0, 4).map((tag, idx) => (
+                <span
+                  key={idx}
+                  className="absolute font-bold text-xs md:text-base lg:text-lg opacity-20 text-white dark:text-white select-none pointer-events-none whitespace-nowrap"
+                  style={{
+                    ...tagPositions[idx],
+                    position: "absolute",
+                    transform: `rotate(${tagPositions[idx].rotate})`,
+                  }}
                 >
-                  <MessageCircle className="h-4 w-4 text-white" />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>Ask away</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+                  {tag}
+                </span>
+              ));
+            })()}
+          </span>
+        </div>
+
+        {/* Bottom section (employee: previous layout, others: new layout) */}
+        {userRole === "employee" ? (
+          <div className="w-full flex-1 flex flex-col justify-between">
+            {/* Title and Description */}
+            <div className="w-full px-6 pt-4 pb-2 flex flex-col items-center text-center">
+              <CardTitle
+                className="text-base font-semibold text-neutral-900 dark:text-neutral-100 mb-1 truncate w-full"
+                title={courseDetails?.title || title}
+              >
+                {courseDetails?.title || title}
+              </CardTitle>
+              {description && (
+                <div
+                  className="text-xs text-neutral-500 dark:text-neutral-400 mt-1 line-clamp-2 w-full truncate"
+                  title={description}
+                >
+                  {description}
+                </div>
+              )}
+            </div>
+            {/* Only pie chart for progress, remove enrolled users icon/value */}
+            <div className="w-full px-6 flex items-center justify-between mb-2">
+              {/* Pie chart for progress with tooltip on hover */}
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="cursor-pointer relative">
+                      <svg
+                        width="36"
+                        height="36"
+                        viewBox="0 0 36 36"
+                        className="block"
+                      >
+                        <circle
+                          cx="18"
+                          cy="18"
+                          r="16"
+                          fill="none"
+                          stroke="#e5e7eb"
+                          strokeWidth="4"
+                        />
+                        <circle
+                          cx="18"
+                          cy="18"
+                          r="16"
+                          fill="none"
+                          stroke="#22c55e"
+                          strokeWidth="4"
+                          strokeDasharray={Math.PI * 2 * 16}
+                          strokeDashoffset={
+                            Math.PI * 2 * 16 * (1 - (progress || 0) / 100)
+                          }
+                          strokeLinecap="round"
+                          style={{ transition: "stroke-dashoffset 0.5s" }}
+                        />
+                      </svg>
+                      {progress === 100 && (
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <Check className="h-4 w-4 text-green-500" />
+                        </div>
+                      )}
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <span className="font-semibold text-green-500">
+                      {progress}%
+                    </span>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+              {/* Certificate download link (right, only on hover) */}
+              {canDownloadCertificate && certificateUrl && (
+                <a
+                  href={certificateUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="ml-2 text-green-700 text-sm font-medium flex items-center gap-1 no-underline"
+                  style={{ textDecoration: "none" }}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <Award className="h-4 w-4 text-green-600" />
+                  Certificate
+                </a>
+              )}
+            </div>
+            {/* Buttons and actions (retain previous logic) */}
+            <div className="w-full px-6 pb-4">
+              {/* Horizontal alignment for Take Quiz and Start Again when both are shown */}
+              {progress === 100 && onTakeQuiz && canRetakeQuiz ? (
+                <div className="flex gap-3">
+                  <Button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onTakeQuiz();
+                    }}
+                    className="flex-1 bg-green-600 hover:bg-green-700 text-white rounded-xl px-4 py-1 text-xs font-semibold transition-colors duration-300"
+                  >
+                    Take Quiz
+                  </Button>
+                  <Button
+                    className="flex-1 rounded-xl px-4 py-1 text-xs font-semibold transition-colors duration-300 bg-green-600 hover:bg-green-700 text-white"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (onClick) {
+                        console.log(
+                          "CourseCard Start/Resume button clicked, calling onClick prop"
+                        );
+                        onClick();
+                      }
+                    }}
+                  >
+                    Start Again
+                  </Button>
+                </div>
+              ) : (
+                <Button
+                  className={`rounded-xl px-4 py-1 text-xs font-semibold transition-colors duration-300 ${
+                    progress === 100
+                      ? "bg-green-600 hover:bg-green-700 text-white"
+                      : progress > 0
+                      ? "bg-gray-900 hover:bg-gray-800 text-white"
+                      : isMandatory
+                      ? "bg-blue-600 hover:bg-blue-700 text-white"
+                      : "bg-white hover:bg-gray-100 text-gray-900 border border-gray-300"
+                  }`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (onClick) {
+                      console.log(
+                        "CourseCard Start/Resume button clicked, calling onClick prop"
+                      );
+                      onClick();
+                    }
+                  }}
+                >
+                  {progress === 100
+                    ? "Start Again"
+                    : progress > 0
+                    ? "Resume Course"
+                    : "Start Course"}
+                </Button>
+              )}
+            </div>
+          </div>
+        ) : (
+          <div className="w-full flex-[4] flex flex-col justify-between h-[40%]">
+            {/* Title and Description */}
+            <div className="w-full px-6 pt-4 pb-2 flex flex-col items-center text-center">
+              <CardTitle
+                className="text-base font-semibold text-neutral-900 dark:text-neutral-100 mb-1 truncate w-full"
+                title={courseDetails?.title || title}
+              >
+                {courseDetails?.title || title}
+              </CardTitle>
+              {description && (
+                <div
+                  className="text-xs text-neutral-500 dark:text-neutral-400 mt-1 line-clamp-2 w-full truncate"
+                  title={description}
+                >
+                  {description}
+                </div>
+              )}
+            </div>
+            {/* Enrolled users, tags, buttons */}
+            <div className="w-full px-6 pb-4 flex flex-col gap-3">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2 text-neutral-500 dark:text-neutral-300 text-sm">
+                  {userRole === "superuser" && (
+                    <span className="flex items-center gap-1">
+                      <Users className="h-4 w-4" />
+                      <span>{enrolledUsers}</span>
+                    </span>
+                  )}
+                </div>
+                {/* Tags removed from here as per new requirement */}
+              </div>
+              <div className="flex gap-2">
+                {userRole !== "superuser" && (
+                  <Button
+                    className="flex-1 rounded-lg  dark:bg-red-600 text-white font-semibold py-2 hover:bg-blue-600 dark:hover:bg-blue-700 transition"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (onClick) {
+                        console.log(
+                          "CourseCard Play/Start button clicked, calling onClick prop"
+                        );
+                        onClick();
+                      } else {
+                        navigate(
+                          `/admin/course/${courseId}/play?tenantId=${tenantId}&token=${token}`
+                        );
+                      }
+                    }}
+                  >
+                    Play
+                  </Button>
+                )}
+                <Button
+                  className="flex-1 rounded-lg bg-neutral-900 dark:bg-neutral-100 text-white dark:text-neutral-900 font-semibold py-2 hover:bg-neutral-800 dark:hover:bg-neutral-200 transition"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsDetailsModalOpen(true);
+                  }}
+                >
+                  View Details
+                </Button>
+              </div>
+            </div>
+          </div>
         )}
 
-        {/* Admin/Superuser 3-dot menu - custom dropdown */}
+        {/* Three-dot menu for admin/superuser */}
         {(userRole === "admin" || userRole === "superuser") && (
-          <div className="absolute top-4 right-4 z-30" ref={dropdownRef}>
+          <div className="absolute top-3 right-3 z-20" ref={dropdownRef}>
             <button
-              className="p-2 rounded-full hover:bg-white/10 focus:outline-none"
+              className="p-2 rounded-full hover:bg-neutral-200 dark:hover:bg-neutral-800 focus:outline-none"
               onClick={(e) => {
                 e.stopPropagation();
                 setDropdownOpen((open) => !open);
@@ -295,13 +554,13 @@ const CourseCard = ({
               aria-haspopup="true"
               aria-expanded={dropdownOpen}
             >
-              <MoreVertical className="h-5 w-5 text-white" />
+              <MoreVertical className="h-5 w-5 text-neutral-500 dark:text-neutral-300" />
             </button>
             {dropdownOpen &&
               (userRole === "superuser" ? (
-                <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg mt-2 min-w-[120px] absolute right-0 overflow-hidden">
+                <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-xl shadow-lg mt-2 min-w-[140px] absolute right-0 overflow-hidden">
                   <button
-                    className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800 flex items-center gap-2"
+                    className="w-full text-left px-4 py-2 text-sm hover:bg-neutral-100 dark:hover:bg-neutral-800 flex items-center gap-2"
                     onClick={(e) => {
                       e.stopPropagation();
                       setDropdownOpen(false);
@@ -324,7 +583,7 @@ const CourseCard = ({
                   </button>
                 </div>
               ) : (
-                <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg mt-2 min-w-[120px] absolute right-0 overflow-hidden">
+                <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-xl shadow-lg mt-2 min-w-[140px] absolute right-0 overflow-hidden">
                   <button
                     disabled={isToggling}
                     onClick={async (e) => {
@@ -332,7 +591,7 @@ const CourseCard = ({
                       await handleToggleCourse();
                       setDropdownOpen(false);
                     }}
-                    className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800"
+                    className="w-full text-left px-4 py-2 text-sm hover:bg-neutral-100 dark:hover:bg-neutral-800"
                   >
                     {isEnabled ? "Deactivate" : "Activate"}
                   </button>
@@ -340,150 +599,14 @@ const CourseCard = ({
               ))}
           </div>
         )}
-
-        <div className={`px-6 pt-5 pb-3 ${headerGradient}`}>
-          <CardTitle
-            className={`${titleColor} text-xl font-semibold flex items-center gap-1`}
-          >
-            {courseDetails?.title || title}
-            {isMandatory && <span className={`${titleColor} text-xl`}>*</span>}
-          </CardTitle>
-          <CardDescription className="text-[#A3B0C7] mt-0.5 text-sm">
-            {courseDetails?.description || description}
-          </CardDescription>
-        </div>
-
-        <CardContent className="pt-4 px-6 pb-0">
-          {userRole === "employee" ? (
-            <div className="space-y-2">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm text-white font-medium">Progress</span>
-                <span className="text-sm font-bold text-white">
-                  {progress}%
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Progress
-                  value={progress}
-                  className="h-2 bg-[#232B41] flex-1 min-w-0"
-                  style={{
-                    width:
-                      canDownloadCertificate && certificateUrl
-                        ? "calc(100% - 32px)"
-                        : "100%",
-                  }}
-                  indicatorClassName={`rounded-full ${
-                    isMandatory ? "" : "bg-[#3D60B2]"
-                  }`}
-                  indicatorStyle={
-                    isMandatory
-                      ? {
-                          background:
-                            "linear-gradient(93deg, #A80000 -30%, #5779C9 60%)",
-                        }
-                      : undefined
-                  }
-                />
-                {canDownloadCertificate && certificateUrl && (
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <button
-                          onClick={handleCertificateDownload}
-                          className="p-1 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
-                        >
-                          <Award className="h-5 w-5 text-green-400" />
-                        </button>
-                      </TooltipTrigger>
-                      <TooltipContent
-                        side="top"
-                        align="center"
-                        className="max-w-xs text-xs px-2 py-1"
-                      >
-                        <p>
-                          Download
-                          <br />
-                          certificate
-                        </p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                )}
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-white font-medium">
-                  Learning Objectives
-                </span>
-                <div className="flex items-center gap-1">
-                  <Users className="h-4 w-4 text-[#A3B0C7]" />
-                  <span className="text-sm text-[#A3B0C7]">
-                    {enrolledUsers}
-                  </span>
-                </div>
-              </div>
-              <p className="text-sm text-[#A3B0C7] line-clamp-2">
-                {courseDetails?.learningObjectives || learningObjectives}
-              </p>
-            </div>
-          )}
-        </CardContent>
-
-        <CardFooter className="flex justify-end px-6 pb-6 pt-4 bg-transparent border-none gap-2">
-          {userRole === "employee" ? (
-            <>
-              {progress === 100 && onTakeQuiz && canRetakeQuiz && (
-                <Button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onTakeQuiz();
-                  }}
-                  className={`bg-green-600 hover:bg-green-700 text-white rounded-xl ${
-                    userRole === "employee"
-                      ? "px-4 py-1 text-xs"
-                      : "px-6 py-2 text-sm"
-                  } font-semibold`}
-                >
-                  Take Quiz
-                </Button>
-              )}
-              <Link
-                to={`/dashboard/course/${id}/play?tenantId=${tenantId}&token=${token}&progress=${progress}`}
-              >
-                <Button
-                  className={`rounded-xl ${
-                    userRole === "employee"
-                      ? "px-4 py-1 text-xs"
-                      : "px-6 py-2 text-sm"
-                  } font-semibold ${buttonClass}`}
-                >
-                  {getButtonText()}
-                </Button>
-              </Link>
-            </>
-          ) : (
-            <Button
-              onClick={(e) => {
-                e.stopPropagation();
-                setIsDetailsModalOpen(true);
-              }}
-              className={`rounded-xl ${
-                userRole === "employee"
-                  ? "px-4 py-1 text-xs"
-                  : "px-6 py-2 text-sm"
-              } font-semibold border border-white text-white bg-transparent hover:bg-white/10`}
-            >
-              View Details
-            </Button>
-          )}
-        </CardFooter>
       </Card>
 
+      {/* Details Modal */}
       <CourseDetailsModal
         isOpen={isDetailsModalOpen}
         onClose={() => setIsDetailsModalOpen(false)}
+        tenantId={tenantId}
+        courseId={courseId}
         course={{
           id: courseId,
           title: courseDetails?.title || title,
@@ -491,9 +614,15 @@ const CourseCard = ({
           learningObjectives:
             courseDetails?.learningObjectives || learningObjectives,
           properties: courseProperties,
-          enrolledUsers,
+          tags: Array.isArray(tags) ? tags.join(", ") : tags || "",
           ...courseDetails,
         }}
+        onUpdate={() => {
+          if (onUpdateCourse) {
+            onUpdateCourse();
+          }
+        }}
+        hideProperties={userRole === "superuser"}
       />
 
       {/* Chatbot Overlay - minimal, no extra styling */}

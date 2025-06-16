@@ -1,10 +1,13 @@
 import { useState, useEffect, useRef } from "react";
-import { useParams, useNavigate, useSearchParams } from "react-router-dom";
+import {
+  useParams,
+  useNavigate,
+  useSearchParams,
+  useLocation,
+} from "react-router-dom";
 import { toast } from "sonner";
-import { coursesSlides } from "@/data/courseSlides";
 import SlidePlayer from "@/components/course/SlidePlayer";
 import CourseNotFound from "@/components/course/CourseNotFound";
-import { useQuery } from "@tanstack/react-query";
 import ChatHelp from "@/components/course/ChatHelp";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
@@ -46,66 +49,12 @@ const API_ENDPOINTS = {
   S3_AUDIO_PATH: (courseId: string) => `s3://course-content/${courseId}/audio/`,
 };
 
-// Mock API function - replace with actual API call
-const fetchPersonalizedExplanations = async (
-  courseId: string,
-  organizationId: string = "default"
-) => {
-  // In a real app, this would be an API call to get personalized explanations
-  console.log(
-    `Fetching explanations for course ${courseId} and org ${organizationId}`
-  );
-
-  // Mock data - replace with actual API response
-  return new Promise<Record<string, string>>((resolve) => {
-    setTimeout(() => {
-      resolve({
-        "slide-1":
-          "In Webknot organization, this concept is particularly relevant because...",
-        "slide-2":
-          "Considering Webknot's industry focus, these regulations apply in the following ways...",
-        "slide-3":
-          "For Webknot employees, the best practice is to handle this situation by...",
-      });
-    }, 1000);
-  });
-};
-
 interface Slide {
   id: string;
   title: string;
   content: string;
   completed: boolean;
 }
-
-interface EnhancedSlide extends Slide {
-  explanation?: string;
-}
-
-// Mock data for testing
-const mockSlides: Slide[] = [
-  {
-    id: "slide1",
-    title: "Introduction to Data Privacy",
-    content:
-      "This course will cover the essential aspects of data privacy regulations including GDPR, CCPA, and industry best practices.",
-    completed: false,
-  },
-  {
-    id: "slide2",
-    title: "Key GDPR Requirements",
-    content:
-      "The General Data Protection Regulation (GDPR) is a comprehensive privacy law that protects EU citizens. Learn about its key requirements and how they affect your organization.",
-    completed: false,
-  },
-  {
-    id: "slide3",
-    title: "CCPA Compliance",
-    content:
-      "The California Consumer Privacy Act (CCPA) gives California residents specific rights regarding their personal information. This section explains what businesses need to do for compliance.",
-    completed: false,
-  },
-];
 
 interface CoursePlayerProps {
   courseId: string;
@@ -129,12 +78,22 @@ const CoursePlayer = ({
   const { courseId: urlCourseId } = useParams<{ courseId: string }>();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const location = useLocation();
 
   // Get parameters from URL
   const urlTenantId = searchParams.get("tenantId");
   const urlToken = searchParams.get("token");
   const urlProgressParam = searchParams.get("progress");
   const urlProgress = urlProgressParam ? parseFloat(urlProgressParam) : 0;
+
+  // Get properties from navigation state or props
+  const stateProperties = location.state?.properties;
+  const courseProperties = stateProperties ||
+    properties || {
+      mandatory: true,
+      skippable: false,
+      retryType: "SAME" as const,
+    };
 
   const [slides, setSlides] = useState<Slide[]>([]);
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
@@ -148,16 +107,6 @@ const CoursePlayer = ({
 
   const resumeSlideRef = useRef(0);
 
-  // Default properties if none provided
-  const defaultProperties = {
-    mandatory: true,
-    skippable: false,
-    retryType: "SAME" as const,
-  };
-
-  // Use provided properties or defaults
-  const courseProperties = properties || defaultProperties;
-
   // Set retryType in localStorage for this course
   useEffect(() => {
     if (courseId && courseProperties?.retryType) {
@@ -167,9 +116,6 @@ const CoursePlayer = ({
       );
     }
   }, [courseId, courseProperties]);
-
-  console.log("CoursePlayer - Course ID:", courseId);
-  console.log("CoursePlayer - Properties:", courseProperties);
 
   // Fetch explanations and set initial slide
   useEffect(() => {

@@ -14,6 +14,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { BookOpen, CheckCircle, Clock, AlertCircle } from "lucide-react";
 
 interface User {
   id: string;
@@ -51,19 +52,55 @@ const UsersList = ({ users, title = "" }: UsersListProps) => {
                 <TableCell className="font-medium">{user.name}</TableCell>
                 <TableCell>{user.email}</TableCell>
                 <TableCell>
-                  <div className="flex flex-wrap gap-1">
-                    <Badge variant="outline">
-                      {user.coursesCompleted}/{user.totalCourses} Courses
-                    </Badge>
+                  <div className="flex items-center gap-2">
+                    <div className="p-2 rounded-full bg-blue-100 text-blue-600">
+                      <BookOpen className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <span className="font-medium">
+                        {user.coursesCompleted}/{user.totalCourses}
+                      </span>
+                      <p className="text-xs text-muted-foreground">Courses</p>
+                    </div>
                   </div>
                 </TableCell>
                 <TableCell>
                   {user.lastActivity === "Completed" ? (
-                    <Badge variant="default">Completed</Badge>
+                    <div className="flex items-center gap-2">
+                      <div className="p-2 rounded-full bg-green-100 text-green-600">
+                        <CheckCircle className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <span className="font-medium">Completed</span>
+                        <p className="text-xs text-muted-foreground">
+                          Courses finished
+                        </p>
+                      </div>
+                    </div>
                   ) : user.lastActivity === "In Progress" ? (
-                    <Badge variant="outline">In Progress</Badge>
+                    <div className="flex items-center gap-2">
+                      <div className="p-2 rounded-full bg-yellow-100 text-yellow-600">
+                        <Clock className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <span className="font-medium">In Progress</span>
+                        <p className="text-xs text-muted-foreground">
+                          Currently learning
+                        </p>
+                      </div>
+                    </div>
                   ) : (
-                    <Badge variant="secondary">Not Started</Badge>
+                    <div className="flex items-center gap-2">
+                      <div className="p-2 rounded-full bg-gray-100 text-gray-600">
+                        <AlertCircle className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <span className="font-medium">Not Started</span>
+                        <p className="text-xs text-muted-foreground">
+                          No courses started
+                        </p>
+                      </div>
+                    </div>
                   )}
                 </TableCell>
               </TableRow>

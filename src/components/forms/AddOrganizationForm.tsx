@@ -195,7 +195,7 @@ const AddOrganizationForm: React.FC<AddOrganizationFormProps> = ({
               </Button>
               <Button 
                 type="submit" 
-                className="bg-complybrand-700 hover:bg-complybrand-800"
+                className="bg-complybrand-700 hover:bg-complybrand-800 text-white"
                 disabled={isLoading}
               >
                 {isLoading ? "Creating..." : "Create Organization"}

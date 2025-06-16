@@ -13,7 +13,6 @@ import {
 import { Progress } from "@/components/ui/progress";
 import { Award, Clock, BookOpen, Download } from "lucide-react";
 import CourseCard from "@/components/dashboard/CourseCard";
-import CourseProgress from "@/components/dashboard/CourseProgress";
 import { toast } from "sonner";
 import {
   Drawer,
@@ -51,6 +50,7 @@ interface CourseData {
     mandatory: boolean;
     retryType: "DIFFERENT" | "SAME";
   };
+  tags?: string[];
 }
 
 interface UserProfile {
@@ -62,6 +62,14 @@ interface UserProfile {
 interface ProgressData {
   courseId: string;
   progress: number;
+}
+
+interface UserCourse {
+  courseId: string;
+  canDownloadCertificate?: boolean;
+  certificateUrl?: string;
+  canRetakeQuiz?: boolean;
+  // Add other fields as needed
 }
 
 const UserDashboard = () => {
@@ -78,7 +86,7 @@ const UserDashboard = () => {
     {}
   );
   const navigate = useNavigate();
-  const [userCourses, setUserCourses] = useState([]);
+  const [userCourses, setUserCourses] = useState<UserCourse[]>([]);
   const [userId, setUserId] = useState("");
   const [progressView, setProgressView] = useState("all");
 
@@ -202,7 +210,7 @@ const UserDashboard = () => {
 
         setCourseProgress(progressMap);
         setIsLoading(false);
-      } catch (error) {
+      } catch (error: unknown) {
         console.error("Error fetching data:", error);
         toast.error("Failed to load data");
         setIsLoading(false);
@@ -217,10 +225,10 @@ const UserDashboard = () => {
     let decodedUserId = "";
     if (token) {
       try {
-        const decoded: any = jwtDecode(token);
+        const decoded: Record<string, any> = jwtDecode(token);
         decodedUserId = decoded.sub || decoded.id || decoded.userId || "";
         setUserId(decodedUserId);
-      } catch (e) {
+      } catch (e: unknown) {
         console.error("Failed to decode token", e);
       }
     }
@@ -310,7 +318,10 @@ const UserDashboard = () => {
       };
 
       const courseProperties = course.properties || defaultProperties;
-      console.log("Course properties being passed:", courseProperties);
+      console.log(
+        "Course properties being passed to player:",
+        courseProperties
+      );
 
       navigate(
         `/dashboard/course/${courseId}/play?tenantId=${tenantId}&token=${token}&progress=${
@@ -388,128 +399,136 @@ const UserDashboard = () => {
       <main className="flex-grow pt-16">
         <div className="container mx-auto px-4 py-8">
           <div className="flex flex-col lg:flex-row gap-8">
-            <div className="lg:w-1/4">
-              <Card className="animate-fade-in hover:shadow-md mt-16 transition-all duration-300 overflow-hidden bg-black backdrop-blur-sm border border-border/50">
-                <CardHeader className="pb-2">
-                  <CardTitle>
+            <div className="lg:w-1/3 w-full">
+              <Card className="animate-fade-in mt-8 shadow-lg rounded-2xl bg-white dark:bg-neutral-900 border-0 p-0 overflow-hidden">
+                <CardHeader className="pb-2 border-b border-neutral-100 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-800">
+                  <CardTitle className="text-xl font-bold text-neutral-900 dark:text-white mb-1">
                     Welcome back, {userProfile?.name || "Employee"}!
                   </CardTitle>
-                  <CardDescription>Your training dashboard</CardDescription>
+                  <CardDescription className="text-neutral-500 dark:text-neutral-400 text-base font-medium">
+                    Your Training Dashboard
+                  </CardDescription>
                 </CardHeader>
-                <CardContent>
-                  <div className="mb-6">
-                    <h3 className="font-medium text-lg">
+                <CardContent className="py-6 px-6">
+                  <div className="mb-6 flex items-center gap-2">
+                    <span className="text-sm text-neutral-500 dark:text-neutral-400">
+                      Email:
+                    </span>
+                    <span className="text-base font-semibold text-neutral-900 dark:text-white">
                       {userProfile?.email || "Employee"}
-                    </h3>
+                    </span>
                   </div>
-
                   <div className="space-y-4">
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm text-gray-500">
-                          Progress Overview
-                        </span>
-                        <Select
-                          value={progressView}
-                          onValueChange={setProgressView}
-                        >
-                          <SelectTrigger className="w-[180px]">
-                            <SelectValue placeholder="Select view" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="all">All Courses</SelectItem>
-                            <SelectItem value="mandatory">
-                              Mandatory Courses
-                            </SelectItem>
-                            <SelectItem value="non-mandatory">
-                              Non-Mandatory Courses
-                            </SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      {progressView === "all" && (
-                        <>
-                          <div className="flex items-center justify-between">
-                            <span className="text-sm text-gray-500">
-                              Overall Progress
-                            </span>
-                            <span className="text-sm font-medium">
-                              {overallProgress}%
-                            </span>
-                          </div>
-                          <Progress
-                            value={overallProgress}
-                            className="h-2 bg-gray-200 dark:bg-gray-700"
-                          />
-                        </>
-                      )}
-
-                      {progressView === "mandatory" && (
-                        <>
-                          <div className="flex items-center justify-between">
-                            <span className="text-sm text-gray-500">
-                              Mandatory Courses Progress
-                            </span>
-                            <span className="text-sm font-medium">
-                              {mandatoryProgress}%
-                            </span>
-                          </div>
-                          <Progress
-                            value={mandatoryProgress}
-                            className="h-2 bg-red-200 dark:bg-red-700"
-                          />
-                          <div className="text-xs text-gray-500 mt-1">
-                            {mandatoryCourses.length} mandatory courses
-                          </div>
-                        </>
-                      )}
-
-                      {progressView === "non-mandatory" && (
-                        <>
-                          <div className="flex items-center justify-between">
-                            <span className="text-sm text-gray-500">
-                              Non-Mandatory Courses Progress
-                            </span>
-                            <span className="text-sm font-medium">
-                              {nonMandatoryProgress}%
-                            </span>
-                          </div>
-                          <Progress
-                            value={nonMandatoryProgress}
-                            className="h-2 bg-blue-200 dark:bg-blue-700"
-                          />
-                          <div className="text-xs text-gray-500 mt-1">
-                            {nonMandatoryCourses.length} non-mandatory courses
-                          </div>
-                        </>
-                      )}
-                    </div>
-
-                    <div className="pt-2 border-t flex justify-between items-center hover:bg-muted/20 p-2 rounded-md transition-colors">
-                      <div className="flex items-center">
-                        <BookOpen className="h-4 w-4 mr-2 text-gray-500" />
-                        <span className="text-sm">Total Courses</span>
-                      </div>
-                      <span className="font-medium">{courses.length}</span>
-                    </div>
-
-                    <div className="flex justify-between items-center hover:bg-muted/20 p-2 rounded-md transition-colors">
-                      <div className="flex items-center">
-                        <Award className="h-4 w-4 mr-2 text-gray-500" />
-                        <span className="text-sm">Completed</span>
-                      </div>
-                      <span className="font-medium">{completedCourses}</span>
-                    </div>
-
-                    <div className="flex justify-between items-center hover:bg-muted/20 p-2 rounded-md transition-colors">
-                      <div className="flex items-center">
-                        <Clock className="h-4 w-4 mr-2 text-gray-500" />
-                        <span className="text-sm">In Progress</span>
-                      </div>
-                      <span className="font-medium">
-                        {courses.length - completedCourses}
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-neutral-500 dark:text-neutral-400">
+                        Progress Overview
                       </span>
+                      <Select
+                        value={progressView}
+                        onValueChange={setProgressView}
+                      >
+                        <SelectTrigger className="w-[160px] bg-neutral-100 dark:bg-neutral-800 border-0 text-neutral-700 dark:text-neutral-200">
+                          <SelectValue placeholder="Select view" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All Courses</SelectItem>
+                          <SelectItem value="mandatory">
+                            Mandatory Courses
+                          </SelectItem>
+                          <SelectItem value="non-mandatory">
+                            Non-Mandatory Courses
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    {progressView === "all" && (
+                      <>
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm text-neutral-500 dark:text-neutral-400">
+                            Overall Progress
+                          </span>
+                          <span className="text-sm font-medium">
+                            {overallProgress}%
+                          </span>
+                        </div>
+                        <Progress
+                          value={overallProgress}
+                          className="h-2 bg-neutral-200 dark:bg-neutral-700"
+                        />
+                      </>
+                    )}
+                    {progressView === "mandatory" && (
+                      <>
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm text-neutral-500 dark:text-neutral-400">
+                            Mandatory Courses Progress
+                          </span>
+                          <span className="text-sm font-medium">
+                            {mandatoryProgress}%
+                          </span>
+                        </div>
+                        <Progress
+                          value={mandatoryProgress}
+                          className="h-2 bg-red-200 dark:bg-red-700"
+                        />
+                        <div className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
+                          {mandatoryCourses.length} mandatory courses
+                        </div>
+                      </>
+                    )}
+                    {progressView === "non-mandatory" && (
+                      <>
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm text-neutral-500 dark:text-neutral-400">
+                            Non-Mandatory Courses Progress
+                          </span>
+                          <span className="text-sm font-medium">
+                            {nonMandatoryProgress}%
+                          </span>
+                        </div>
+                        <Progress
+                          value={nonMandatoryProgress}
+                          className="h-2 bg-blue-200 dark:bg-blue-700"
+                        />
+                        <div className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
+                          {nonMandatoryCourses.length} non-mandatory courses
+                        </div>
+                      </>
+                    )}
+                    <div className="divide-y divide-neutral-100 dark:divide-neutral-800">
+                      <div className="flex justify-between items-center py-3">
+                        <div className="flex items-center gap-2">
+                          <BookOpen className="h-5 w-5 text-blue-500 dark:text-blue-400" />
+                          <span className="text-sm text-neutral-700 dark:text-neutral-200">
+                            Total Courses
+                          </span>
+                        </div>
+                        <span className="font-bold text-neutral-900 dark:text-white">
+                          {courses.length}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center py-3">
+                        <div className="flex items-center gap-2">
+                          <Award className="h-5 w-5 text-green-500 dark:text-green-400" />
+                          <span className="text-sm text-neutral-700 dark:text-neutral-200">
+                            Completed
+                          </span>
+                        </div>
+                        <span className="font-bold text-green-600 dark:text-green-400">
+                          {completedCourses}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center py-3">
+                        <div className="flex items-center gap-2">
+                          <Clock className="h-5 w-5 text-yellow-500 dark:text-yellow-400" />
+                          <span className="text-sm text-neutral-700 dark:text-neutral-200">
+                            In Progress
+                          </span>
+                        </div>
+                        <span className="font-bold text-yellow-600 dark:text-yellow-400">
+                          {courses.length - completedCourses}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </CardContent>
@@ -565,12 +584,19 @@ const UserDashboard = () => {
 
                     // Find userCourse info for this course
                     const userCourse = userCourses.find(
-                      (uc: any) => uc.courseId === course.id
+                      (uc: UserCourse) => uc.courseId === course.id
                     );
                     const canDownloadCertificate =
                       userCourse?.canDownloadCertificate;
                     const certificateUrl = userCourse?.certificateUrl;
                     const canRetakeQuiz = userCourse?.canRetakeQuiz;
+
+                    // Log properties passed to CourseCard
+                    console.log(
+                      "Rendering CourseCard for course:",
+                      course.title,
+                      course.properties
+                    );
 
                     return (
                       <div key={course.id} className="relative">
@@ -593,7 +619,6 @@ const UserDashboard = () => {
                               : ""
                           }
                           properties={course.properties}
-                          onClick={() => handleCourseSelect(course.id)}
                           canRetakeQuiz={canRetakeQuiz}
                           onTakeQuiz={
                             isCompleted
@@ -701,6 +726,12 @@ const UserDashboard = () => {
                           }
                           canDownloadCertificate={canDownloadCertificate}
                           certificateUrl={certificateUrl}
+                          tags={
+                            Array.isArray(course.tags)
+                              ? course.tags.join(", ")
+                              : course.tags
+                          }
+                          onClick={() => handleCourseSelect(course.id)}
                         />
                       </div>
                     );

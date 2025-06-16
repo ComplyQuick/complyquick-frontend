@@ -146,7 +146,7 @@ const Login = () => {
           <CardFooter>
             <Button
               type="submit"
-              className="w-full bg-complybrand-600 hover:bg-complybrand-700"
+              className="w-full bg-complybrand-600 hover:bg-complybrand-700 text-white"
               disabled={isLoading}
             >
               {isLoading ? "Logging in..." : "Login"}

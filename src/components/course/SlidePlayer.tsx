@@ -66,6 +66,7 @@ interface SlidePlayerProps {
   onSkipForward: () => void;
   onSkipBackward: () => void;
   resumeSlideIndex: number;
+  isAdminView?: boolean;
 }
 
 function parseWebVTT(vttText: string) {
@@ -110,6 +111,7 @@ const SlidePlayer = ({
   onSkipForward,
   onSkipBackward,
   resumeSlideIndex,
+  isAdminView = false,
 }: SlidePlayerProps) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [volume, setVolume] = useState(80);
@@ -135,6 +137,11 @@ const SlidePlayer = ({
   const isLastSlide = currentSlideIndex === slides.length - 1;
   const totalCompleted = slides.filter((slide) => slide.completed).length;
   const overallProgress = (totalCompleted / slides.length) * 100;
+  const [showAdminCompleteModal, setShowAdminCompleteModal] = useState(false);
+  const slideAreaRef = useRef<HTMLDivElement>(null);
+  const [controlsVisible, setControlsVisible] = useState(true);
+  const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   // Fetch explanations when component mounts
   useEffect(() => {
@@ -420,38 +427,21 @@ const SlidePlayer = ({
   }, [currentSlideIndex]);
 
   const handleSlideSelect = (index: number) => {
-    console.log("[SlidePlayer] handleSlideSelect", {
-      index,
-      maxVisitedSlide,
-      currentSlideIndex,
-      canAdvance,
-      progress,
-    });
-    // Allow navigation to any slide up to maxVisitedSlide
+    if (isAdminView) {
+      onSlideChange(index);
+      return;
+    }
     if (index <= maxVisitedSlide) {
-      console.log(
-        "[SlidePlayer] Navigating to slide",
-        index,
-        "(<= maxVisitedSlide)"
-      );
       onSlideChange(index);
       return;
     }
     // For future slides, require 80% completion of the current slide
     if (!canAdvance && progress < 80) {
-      console.log(
-        "[SlidePlayer] Blocked: progress",
-        progress,
-        "canAdvance",
-        canAdvance
-      );
       toast.info(
         "Please complete at least 80% of the current slide before moving forward"
       );
       return;
     }
-    // If we can advance, allow navigation
-    console.log("[SlidePlayer] Navigating to future slide", index);
     onSlideChange(index);
   };
 
@@ -460,19 +450,38 @@ const SlidePlayer = ({
   };
 
   const handleComplete = async () => {
+    if (isAdminView) {
+      // For admin view, just mark all slides as completed and show modal
+      const updatedSlides = slides.map((slide) => ({
+        ...slide,
+        completed: true,
+      }));
+      setSlides(updatedSlides);
+      setShowAdminCompleteModal(true);
+      onComplete();
+      return;
+    }
+    if (!isLastSlide && overallProgress < 80) {
+      toast.error(
+        "You need to complete at least 80% of the course to proceed."
+      );
+      return;
+    }
+
     try {
       const tenantId = localStorage.getItem("tenantId");
-      if (!courseId || !tenantId) {
-        toast.error("Missing course or tenant information");
-        return;
-      }
       const token = localStorage.getItem("token");
-      if (!token) {
-        toast.error("No authentication token found. Please log in again.");
-        return;
+      if (!courseId || !tenantId || !token) {
+        throw new Error("Missing required parameters");
       }
 
-      // Update progress first
+      const requestBody = {
+        tenantId,
+        progress: 100,
+        slideNumber: currentSlideIndex + 1,
+      };
+      console.log("Sending update-progress request with body:", requestBody);
+
       const response = await fetch(
         `${
           import.meta.env.VITE_BACKEND_URL
@@ -480,28 +489,30 @@ const SlidePlayer = ({
         {
           method: "POST",
           headers: {
-            "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
           },
-          credentials: "include",
-          body: JSON.stringify({ slideNumber: currentSlideIndex + 1 }),
+          body: JSON.stringify(requestBody),
         }
       );
 
       if (!response.ok) {
-        const error = await response.json();
-        toast.error(error.error || "Failed to update progress");
-        return;
+        throw new Error("Failed to update progress");
       }
 
-      // Show completion modal
       setShowCompletionModal(true);
-    } catch (err) {
-      toast.error("Failed to update progress");
+      // Pause playback on last slide after completion
+      setIsPlaying(false);
+      if (audioRef.current) {
+        audioRef.current.pause();
+      }
+    } catch (error) {
+      toast.error("Failed to complete course");
     }
   };
 
   const handleStartAssessment = async () => {
+    if (isAdminView) return;
     try {
       setIsGeneratingMCQ(true);
       const tenantId = localStorage.getItem("tenantId");
@@ -535,7 +546,9 @@ const SlidePlayer = ({
         s3Url = storedMaterialUrl;
       }
 
-      // Generate MCQs
+      // Generate MCQs with abort support
+      const controller = new AbortController();
+      abortControllerRef.current = controller;
       const mcqResponse = await fetch(
         `${import.meta.env.VITE_AI_SERVICE_URL}/generate_mcq`,
         {
@@ -548,6 +561,7 @@ const SlidePlayer = ({
             course_id: courseId,
             tenant_id: tenantId,
           }),
+          signal: controller.signal,
         }
       );
 
@@ -561,10 +575,17 @@ const SlidePlayer = ({
         throw new Error("Invalid MCQ data received");
       }
 
-      // Store MCQ data and navigate to quiz
-      localStorage.setItem("currentQuiz", JSON.stringify(mcqData.mcqs));
-      window.location.href = `/dashboard/course/${courseId}/quiz?tenantId=${tenantId}`;
-    } catch (error) {
+      // Only proceed if not aborted
+      if (!controller.signal.aborted) {
+        localStorage.setItem("currentQuiz", JSON.stringify(mcqData.mcqs));
+        window.location.href = `/dashboard/course/${courseId}/quiz?tenantId=${tenantId}`;
+      }
+    } catch (error: any) {
+      if (error.name === "AbortError") {
+        // Request was aborted, do nothing
+        setIsGeneratingMCQ(false);
+        return;
+      }
       console.error("Error preparing quiz:", error);
       toast.error(
         error instanceof Error
@@ -582,18 +603,44 @@ const SlidePlayer = ({
   };
 
   const handleNext = async () => {
+    if (isAdminView) {
+      // For admin view, just move to next slide without restrictions
+      if (currentSlideIndex < slides.length - 1) {
+        onSlideChange(currentSlideIndex + 1);
+      } else {
+        handleComplete();
+      }
+      return;
+    }
+
+    // Original next slide logic for user view
+    if (!canAdvance && !properties?.skippable) {
+      toast.error("Please complete the current slide before proceeding.");
+      return;
+    }
+
     if (currentSlideIndex < slides.length - 1) {
+      // Update current slide as completed
+      const updatedSlides = [...slides];
+      updatedSlides[currentSlideIndex] = {
+        ...updatedSlides[currentSlideIndex],
+        completed: true,
+      };
+      setSlides(updatedSlides);
+
+      // Calculate and update progress
+      const totalCompleted = updatedSlides.filter(
+        (slide) => slide.completed
+      ).length;
+      const progress = (totalCompleted / slides.length) * 100;
+
       try {
         const tenantId = localStorage.getItem("tenantId");
-        if (!courseId || !tenantId) {
-          toast.error("Missing course or tenant information");
-          return;
-        }
         const token = localStorage.getItem("token");
-        if (!token) {
-          toast.error("No authentication token found. Please log in again.");
-          return;
+        if (!courseId || !tenantId || !token) {
+          throw new Error("Missing required parameters");
         }
+
         const response = await fetch(
           `${
             import.meta.env.VITE_BACKEND_URL
@@ -601,24 +648,67 @@ const SlidePlayer = ({
           {
             method: "POST",
             headers: {
-              "Content-Type": "application/json",
               Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
             },
-            credentials: "include",
-            body: JSON.stringify({ slideNumber: currentSlideIndex + 1 }),
+            body: JSON.stringify({
+              tenantId,
+              progress,
+              slideNumber: currentSlideIndex + 1, // Adding slide number (1-based index)
+            }),
           }
         );
+
         if (!response.ok) {
-          const error = await response.json();
-          toast.error(error.error || "Failed to update progress");
-          return;
+          const errorData = await response.json();
+          throw new Error(errorData.error || "Failed to update progress");
         }
-        onSlideChange(currentSlideIndex + 1);
-      } catch (err) {
-        toast.error("Failed to update progress");
+
+        // Move to next slide
+        const nextIndex = currentSlideIndex + 1;
+        onSlideChange(nextIndex);
+        setMaxVisitedSlide(Math.max(maxVisitedSlide, nextIndex));
+      } catch (error) {
+        console.error("Error updating progress:", error);
+        toast.error(
+          error instanceof Error ? error.message : "Failed to update progress"
+        );
       }
+    } else {
+      handleComplete();
     }
   };
+
+  const handleFullScreen = () => {
+    const el = slideAreaRef.current;
+    if (!el) return;
+    if (document.fullscreenElement) {
+      document.exitFullscreen();
+    } else {
+      el.requestFullscreen();
+    }
+  };
+
+  // Show controls on mouse move, hide after 2s
+  const handleSlideAreaMouseMove = () => {
+    setControlsVisible(true);
+    if (controlsTimeoutRef.current) {
+      clearTimeout(controlsTimeoutRef.current);
+    }
+    controlsTimeoutRef.current = setTimeout(() => {
+      setControlsVisible(false);
+    }, 2000);
+  };
+
+  useEffect(() => {
+    return () => {
+      // Abort MCQ generation if navigating away
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+      setIsGeneratingMCQ(false);
+    };
+  }, []);
 
   if (isGeneratingMCQ) {
     return (
@@ -654,12 +744,18 @@ const SlidePlayer = ({
               slideExplanations={slideExplanations}
               progress={progress}
               maxVisitedSlide={maxVisitedSlide}
+              isAdminView={isAdminView}
             />
           </div>
         </SheetContent>
       </Sheet>
 
-      <div className="flex-grow relative">
+      <div
+        className="flex-grow relative"
+        ref={slideAreaRef}
+        onMouseMove={handleSlideAreaMouseMove}
+        onMouseLeave={() => setControlsVisible(false)}
+      >
         {materialUrl ? (
           <div
             className="relative aspect-video w-full overflow-hidden rounded-lg bg-gray-100 dark:bg-gray-800"
@@ -697,8 +793,8 @@ const SlidePlayer = ({
                       handleSkip("backward");
                     }}
                   >
-                    <span className="text-2xl font-bold text-gray-800 dark:text-white">
-                      {"<<"}
+                    <span className="text-lg font-bold text-gray-800 dark:text-white">
+                      -5&lt;&lt;
                     </span>
                   </button>
                 )}
@@ -735,11 +831,47 @@ const SlidePlayer = ({
                       handleSkip("forward");
                     }}
                   >
-                    <span className="text-2xl font-bold text-gray-800 dark:text-white">
-                      {">>"}
+                    <span className="text-lg font-bold text-gray-800 dark:text-white">
+                      +5&gt;&gt;
                     </span>
                   </button>
                 )}
+              </div>
+            </div>
+            {/* Slide Controls Overlay at bottom (YouTube style) */}
+            <div
+              className={`absolute left-0 right-0 bottom-0 z-30 transition-opacity duration-500 ${
+                controlsVisible
+                  ? "opacity-100"
+                  : "opacity-0 pointer-events-none"
+              }`}
+            >
+              <div className="bg-black/60 px-4 pb-2 pt-3">
+                <SlideControls
+                  isPlaying={isPlaying}
+                  volume={volume}
+                  isMuted={isMuted}
+                  playbackRate={playbackRate}
+                  showSubtitles={showSubtitles}
+                  progress={progress}
+                  setProgress={setProgress}
+                  setCanAdvance={setCanAdvance}
+                  togglePlayback={togglePlayback}
+                  handleVolumeChange={handleVolumeChange}
+                  toggleMute={toggleMute}
+                  changePlaybackRate={changePlaybackRate}
+                  toggleSubtitles={toggleSubtitles}
+                  handlePrev={handlePrev}
+                  handleNext={handleNext}
+                  isFirstSlide={currentSlideIndex === 0}
+                  isLastSlide={
+                    currentSlideIndex === slideExplanations.length - 1
+                  }
+                  onComplete={handleComplete}
+                  canAdvance={canAdvance}
+                  isAdminView={isAdminView}
+                  onFullScreen={handleFullScreen}
+                />
               </div>
             </div>
             {/* Skip Feedback Overlay */}
@@ -788,6 +920,69 @@ const SlidePlayer = ({
         )}
       </div>
 
+      {/* Tiny feedback link for admin view */}
+      {isAdminView && (
+        <div className="w-full flex justify-center mt-4 mb-3">
+          <div className="group relative overflow-hidden bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 dark:from-gray-800/40 dark:via-gray-800/50 dark:to-gray-800/60 rounded-md px-3 py-1 border border-gray-200/50 dark:border-gray-700/50 shadow-sm hover:shadow-md transition-all duration-300 ease-out">
+            {/* Subtle background animation */}
+            <div className="absolute inset-0 bg-gradient-to-r from-blue-100/20 via-indigo-100/20 to-purple-100/20 dark:from-blue-900/10 dark:via-indigo-900/10 dark:to-purple-900/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+
+            {/* Content */}
+            <div className="relative flex items-center gap-1.5">
+              {/* Icon */}
+              <div className="flex-shrink-0 w-5 h-5 bg-gradient-to-br from-blue-500 to-indigo-600 rounded flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform duration-200">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="12"
+                  height="12"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="white"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="group-hover:rotate-12 transition-transform duration-300"
+                >
+                  <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                </svg>
+              </div>
+
+              {/* Text */}
+              <div className="flex-1">
+                <span className="text-xs font-medium text-gray-700 dark:text-gray-200 group-hover:text-gray-900 dark:group-hover:text-white transition-colors duration-200">
+                  Ready to take your content to the next level?
+                </span>
+              </div>
+
+              {/* Button */}
+              <a
+                href={`/admin/course/${courseId}/explanations?tenantId=${
+                  localStorage.getItem("tenantId") || ""
+                }&token=${localStorage.getItem("token") || ""}`}
+                className="relative inline-flex items-center gap-1 px-2 py-0.5 bg-white dark:bg-gray-900 text-xs font-semibold text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-700 rounded hover:bg-indigo-50 dark:hover:bg-indigo-900/20 hover:border-indigo-300 dark:hover:border-indigo-600 transition-all duration-200 shadow-sm hover:shadow group-hover:scale-105"
+              >
+                <span>Enhance Content</span>
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="12"
+                  height="12"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="group-hover:translate-x-1 transition-transform duration-200"
+                >
+                  <path d="M5 12h14" />
+                  <path d="m12 5 7 7-7 7" />
+                </svg>
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="p-4 border-t dark:border-gray-700 bg-white dark:bg-gray-900">
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center space-x-4">
@@ -799,12 +994,9 @@ const SlidePlayer = ({
               <h3 className="text-sm font-semibold">
                 Slide {currentSlideIndex + 1} of {slideExplanations.length}
               </h3>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                {Math.round(progress)}% Complete
-              </p>
             </div>
           </div>
-          {isLastSlide && progress >= 80 && (
+          {!isAdminView && isLastSlide && progress >= 80 && (
             <Button
               onClick={handleComplete}
               className="bg-green-600 hover:bg-green-700 text-white"
@@ -812,30 +1004,6 @@ const SlidePlayer = ({
               Complete Course
             </Button>
           )}
-        </div>
-
-        <div className="space-y-2">
-          <SlideControls
-            isPlaying={isPlaying}
-            volume={volume}
-            isMuted={isMuted}
-            playbackRate={playbackRate}
-            showSubtitles={showSubtitles}
-            progress={progress}
-            setProgress={setProgress}
-            setCanAdvance={setCanAdvance}
-            togglePlayback={togglePlayback}
-            handleVolumeChange={handleVolumeChange}
-            toggleMute={toggleMute}
-            changePlaybackRate={changePlaybackRate}
-            toggleSubtitles={toggleSubtitles}
-            handlePrev={handlePrev}
-            handleNext={handleNext}
-            isFirstSlide={currentSlideIndex === 0}
-            isLastSlide={currentSlideIndex === slideExplanations.length - 1}
-            onComplete={handleComplete}
-            canAdvance={canAdvance}
-          />
         </div>
       </div>
 
@@ -870,6 +1038,29 @@ const SlidePlayer = ({
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Admin completion modal */}
+      {isAdminView && showAdminCompleteModal && (
+        <Dialog
+          open={showAdminCompleteModal}
+          onOpenChange={setShowAdminCompleteModal}
+        >
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Hurray!!</DialogTitle>
+              <DialogDescription>
+                Your course is completed! Feel free to make any changes as per
+                your wishes.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="flex justify-end">
+              <Button onClick={() => setShowAdminCompleteModal(false)}>
+                Close
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 };

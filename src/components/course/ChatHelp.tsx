@@ -86,7 +86,6 @@ const ChatHelp = ({ slideTitle, slideContent, tenantId }: ChatHelpProps) => {
         }
 
         const tenantData = await tenantResponse.json();
-        console.log("Tenant details:", tenantData);
         setTenantDetails(tenantData);
 
         // Get courseId from URL
@@ -109,12 +108,7 @@ const ChatHelp = ({ slideTitle, slideContent, tenantId }: ChatHelpProps) => {
           }
         );
 
-        if (!pocsResponse.ok) {
-          throw new Error("Failed to fetch POCs");
-        }
-
         const pocsData = await pocsResponse.json();
-        console.log("POCs:", pocsData);
         setPocs(pocsData.pocs);
 
         // Check if we already have the material URL in localStorage
@@ -191,12 +185,6 @@ const ChatHelp = ({ slideTitle, slideContent, tenantId }: ChatHelpProps) => {
     setIsLoading(true);
 
     try {
-      console.log("Sending request to chatbot with:", {
-        chatHistory: [...messages, userMessage],
-        presentation_url: courseMaterial.materialUrl,
-        company_name: tenantDetails.details.companyName || "Your Company",
-        pocs: pocs,
-      });
 
       const response = await fetch("http://localhost:8000/chatbot", {
         method: "POST",

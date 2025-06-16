@@ -9,6 +9,7 @@ interface SlideNavigationProps {
   slideExplanations: { content: string }[];
   progress: number;
   maxVisitedSlide: number;
+  isAdminView?: boolean;
 }
 
 const SlideNavigation = ({
@@ -18,9 +19,11 @@ const SlideNavigation = ({
   slideExplanations,
   progress,
   maxVisitedSlide,
+  isAdminView = false,
 }: SlideNavigationProps) => {
   const isSlideCompleted = (index: number) => index < currentSlide;
   const isSlideAccessible = (index: number) => {
+    if (isAdminView) return true;
     if (index <= maxVisitedSlide) {
       console.log(
         "[SlideNavigation] Slide",
