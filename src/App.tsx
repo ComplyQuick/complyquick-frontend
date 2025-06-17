@@ -27,9 +27,6 @@ import Certificate from "@/components/course/Certificate";
 import Login from "./pages/Login";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import AdminCourseExplanations from "@/pages/AdminCourseExplanations";
-
-// Mock authentication for demonstration purposes
-// In a real app, we'd use proper authentication like Auth0, Clerk, or Supabase
 export type UserRole = "superuser" | "admin" | "employee" | null;
 
 const queryClient = new QueryClient();
