@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,42 +8,14 @@ import { toast } from "sonner";
 import SpeechRecognition, {
   useSpeechRecognition,
 } from "react-speech-recognition";
-
-interface ChatMessage {
-  role: "user" | "assistant";
-  content: string;
-}
-
-interface TenantDetails {
-  details: {
-    hrContactName: string;
-    hrContactEmail: string;
-    hrContactPhone: string;
-    ceoName: string;
-    ceoEmail: string;
-    ceoContant: string;
-    ctoName: string;
-    ctoEmail: string;
-    ctoContact: string;
-    companyName?: string;
-  };
-}
-
-interface CourseMaterial {
-  materialUrl: string;
-}
-
-interface POC {
-  role: string;
-  name: string;
-  contact: string;
-}
-
-interface ChatHelpProps {
-  slideTitle: string;
-  slideContent: string;
-  tenantId: string;
-}
+import {
+  ChatMessage,
+  TenantDetails,
+  CourseMaterial,
+  POC,
+  ChatHelpProps,
+} from "@/types/Chat";
+import { chatService } from "@/services/chatService";
 
 const ChatHelp = ({ slideTitle, slideContent, tenantId }: ChatHelpProps) => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -67,25 +39,14 @@ const ChatHelp = ({ slideTitle, slideContent, tenantId }: ChatHelpProps) => {
     browserSupportsSpeechRecognition,
   } = useSpeechRecognition();
 
-  // Fetch tenant details, course material, and POCs when component mounts
   useEffect(() => {
     const fetchRequiredData = async () => {
       try {
         // Fetch tenant details
-        const tenantResponse = await fetch(
-          `${import.meta.env.VITE_BACKEND_URL}/api/tenants/${tenantId}`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
+        const tenantData = await chatService.fetchTenantDetails(
+          tenantId,
+          token!
         );
-
-        if (!tenantResponse.ok) {
-          throw new Error("Failed to fetch tenant details");
-        }
-
-        const tenantData = await tenantResponse.json();
         setTenantDetails(tenantData);
 
         // Get courseId from URL
@@ -97,19 +58,12 @@ const ChatHelp = ({ slideTitle, slideContent, tenantId }: ChatHelpProps) => {
         }
 
         // Fetch POCs
-        const pocsResponse = await fetch(
-          `${
-            import.meta.env.VITE_BACKEND_URL
-          }/api/tenants/${tenantId}/courses/${courseId}/pocs`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
+        const pocsData = await chatService.fetchPOCs(
+          tenantId,
+          courseId,
+          token!
         );
-
-        const pocsData = await pocsResponse.json();
-        setPocs(pocsData.pocs);
+        setPocs(pocsData);
 
         // Check if we already have the material URL in localStorage
         const storedMaterialUrl = localStorage.getItem(
@@ -118,28 +72,17 @@ const ChatHelp = ({ slideTitle, slideContent, tenantId }: ChatHelpProps) => {
 
         if (!storedMaterialUrl) {
           // Fetch course material URL if not in localStorage
-          const materialResponse = await fetch(
-            `${
-              import.meta.env.VITE_BACKEND_URL
-            }/api/courses/${courseId}/chatbot-material?tenantId=${tenantId}`,
-            {
-              headers: {
-                Authorization: `Bearer ${token}`,
-              },
-            }
+          const materialData = await chatService.fetchCourseMaterial(
+            courseId,
+            tenantId,
+            token!
           );
-
-          if (!materialResponse.ok) {
-            throw new Error("Failed to fetch course material");
-          }
-
-          const materialData = await materialResponse.json();
           // Store the material URL in localStorage
           localStorage.setItem(
             `course_material_${courseId}`,
             materialData.materialUrl
           );
-          setCourseMaterial({ materialUrl: materialData.materialUrl });
+          setCourseMaterial(materialData);
         } else {
           // Use the stored material URL
           setCourseMaterial({ materialUrl: storedMaterialUrl });
@@ -185,28 +128,13 @@ const ChatHelp = ({ slideTitle, slideContent, tenantId }: ChatHelpProps) => {
     setIsLoading(true);
 
     try {
-      const response = await fetch("http://localhost:8000/chatbot", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          chatHistory: [...messages, userMessage],
-          presentation_url: courseMaterial.materialUrl,
-          company_name: tenantDetails.details.companyName || "Your Company",
-          pocs: pocs,
-        }),
-      });
+      const botReply = await chatService.sendChatMessage(
+        [...messages, userMessage],
+        courseMaterial.materialUrl,
+        tenantDetails.details.companyName || "Your Company",
+        pocs
+      );
 
-      if (!response.ok) {
-        throw new Error(`API error: ${response.status} ${response.statusText}`);
-      }
-
-      const data = await response.json();
-      const botReply =
-        typeof data.response === "object" && data.response.response
-          ? data.response.response
-          : data.response;
       const assistantMessage: ChatMessage = {
         role: "assistant",
         content: botReply,

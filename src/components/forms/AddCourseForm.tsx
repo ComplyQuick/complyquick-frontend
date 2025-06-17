@@ -22,16 +22,9 @@ import {
 } from "@/components/ui/form";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Label } from "@/components/ui/label";
+import { Course, AddCourseFormProps } from "@/types/AddCourseForm";
+import { superuserService } from "@/services/superuserService";
 
-// Define the form schema with validations
 const courseFormSchema = z.object({
   title: z.string().min(2, { message: "Title is required" }),
   description: z.string().min(10, { message: "Description is required" }),
@@ -46,21 +39,13 @@ const courseFormSchema = z.object({
 
 type CourseFormValues = z.infer<typeof courseFormSchema>;
 
-interface AddCourseFormProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  onCourseCreated?: () => void;
-  mode?: "add" | "update";
-  course?: any;
-}
-
-const AddCourseForm: React.FC<AddCourseFormProps> = ({
+const AddCourseForm = ({
   open,
   onOpenChange,
   onCourseCreated,
   mode = "add",
   course,
-}) => {
+}: AddCourseFormProps) => {
   const [isLoading, setIsLoading] = useState(false);
 
   // If update mode, prefill fields
@@ -130,40 +115,14 @@ const AddCourseForm: React.FC<AddCourseFormProps> = ({
         formData.append("courseMaterial", data.courseMaterial);
       }
 
-      let response;
       if (mode === "update" && course) {
-        response = await fetch(
-          `${import.meta.env.VITE_BACKEND_URL}/api/superadmin/course/${
-            course.id
-          }`,
-          {
-            method: "PATCH",
-            body: formData,
-          }
-        );
+        await superuserService.updateCourse(course.id, formData);
+        toast.success("Course updated successfully!");
       } else {
-        response = await fetch(
-          `${import.meta.env.VITE_BACKEND_URL}/api/courses`,
-          {
-            method: "POST",
-            body: formData,
-          }
-        );
+        await superuserService.createCourse(formData);
+        toast.success("Course created successfully!");
       }
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(
-          errorData.message ||
-            `Failed to ${mode === "update" ? "update" : "create"} course`
-        );
-      }
-
-      toast.success(
-        mode === "update"
-          ? "Course updated successfully!"
-          : "Course created successfully!"
-      );
       onOpenChange(false);
       form.reset();
       onCourseCreated?.();

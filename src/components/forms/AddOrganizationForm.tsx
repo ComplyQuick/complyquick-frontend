@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
@@ -22,28 +22,26 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { toast } from "sonner";
+import { AddOrganizationFormProps } from "@/types/AddOrganizationForm";
+import { superuserService } from "@/services/superuserService";
 
 // Define the form schema with validations
 const organizationFormSchema = z.object({
   name: z.string().min(2, { message: "Organization name is required" }),
   domain: z.string().min(2, { message: "Domain is required" }),
   email: z.string().email({ message: "Invalid email address" }),
-  password: z.string().min(6, { message: "Password must be at least 6 characters" })
+  password: z
+    .string()
+    .min(6, { message: "Password must be at least 6 characters" }),
 });
 
 type OrganizationFormValues = z.infer<typeof organizationFormSchema>;
 
-interface AddOrganizationFormProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  onOrganizationCreated?: () => void;
-}
-
-const AddOrganizationForm: React.FC<AddOrganizationFormProps> = ({
+const AddOrganizationForm = ({
   open,
   onOpenChange,
   onOrganizationCreated,
-}) => {
+}: AddOrganizationFormProps) => {
   const [isLoading, setIsLoading] = useState(false);
 
   const form = useForm<OrganizationFormValues>({
@@ -52,47 +50,40 @@ const AddOrganizationForm: React.FC<AddOrganizationFormProps> = ({
       name: "",
       domain: "",
       email: "",
-      password: ""
+      password: "",
     },
   });
 
   async function onSubmit(data: OrganizationFormValues) {
     setIsLoading(true);
     try {
-      // Create the tenant
-      const tenantResponse = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/tenants`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          name: data.name,
-          domain: data.domain,
-          adminEmail: data.email,
-          adminPassword: data.password
-        })
+      const response = await superuserService.createOrganization({
+        name: data.name,
+        domain: data.domain,
+        adminEmail: data.email,
+        adminPassword: data.password,
       });
 
-      if (!tenantResponse.ok) {
-        throw new Error('Failed to create tenant');
-      }
-
-      const tenantData = await tenantResponse.json();
-      
       // Store tenant ID in localStorage for admin dashboard
-      localStorage.setItem('tenantId', tenantData.id);
+      if (response.tenant?.id) {
+        localStorage.setItem("tenantId", response.tenant.id);
+      }
 
       toast.success("Organization added successfully!");
       form.reset();
       onOpenChange(false);
-      
+
       // Call the callback if provided
       if (onOrganizationCreated) {
         onOrganizationCreated();
       }
     } catch (error) {
-      console.error('Error adding organization:', error);
-      toast.error("Failed to add organization. Please try again.");
+      console.error("Error adding organization:", error);
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Failed to add organization. Please try again."
+      );
     } finally {
       setIsLoading(false);
     }
@@ -102,18 +93,26 @@ const AddOrganizationForm: React.FC<AddOrganizationFormProps> = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-2xl font-bold">Add New Organization</DialogTitle>
+          <DialogTitle className="text-2xl font-bold">
+            Add New Organization
+          </DialogTitle>
           <DialogDescription>
-            Fill in the basic details to create a new organization on ComplyQuick.
+            Fill in the basic details to create a new organization on
+            ComplyQuick.
           </DialogDescription>
         </DialogHeader>
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8 py-4">
+          <form
+            onSubmit={form.handleSubmit(onSubmit)}
+            className="space-y-8 py-4"
+          >
             <div className="grid gap-6 md:grid-cols-2">
               <div className="space-y-6">
                 <div className="space-y-2">
-                  <h3 className="text-lg font-semibold">Organization Details</h3>
+                  <h3 className="text-lg font-semibold">
+                    Organization Details
+                  </h3>
                   <div className="h-px bg-border" />
                 </div>
 
@@ -193,8 +192,8 @@ const AddOrganizationForm: React.FC<AddOrganizationFormProps> = ({
               >
                 Cancel
               </Button>
-              <Button 
-                type="submit" 
+              <Button
+                type="submit"
                 className="bg-complybrand-700 hover:bg-complybrand-800 text-white"
                 disabled={isLoading}
               >

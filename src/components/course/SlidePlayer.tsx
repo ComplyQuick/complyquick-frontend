@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import SlideControls from "./SlideControls";
 import SlideNavigation from "./SlideNavigation";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -16,58 +16,9 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-
-interface Explanation {
-  slide: number;
-  content: string;
-  explanation: string;
-  explanation_audio: string;
-  explanation_subtitle: string;
-}
-
-interface Slide {
-  id: string;
-  title: string;
-  content: string;
-  completed: boolean;
-  imageUrl?: string;
-}
-
-interface SlidePlayerProps {
-  slides: {
-    id: string;
-    title: string;
-    content: string;
-    completed: boolean;
-  }[];
-  setSlides: (
-    slides: {
-      id: string;
-      title: string;
-      content: string;
-      completed: boolean;
-    }[]
-  ) => void;
-  currentSlideIndex: number;
-  onSlideChange: (index: number) => void;
-  onComplete: () => void;
-  explanations: {
-    slide: number;
-    content: string;
-    explanation: string;
-    explanation_audio: string;
-  }[];
-  isLoadingExplanations: boolean;
-  properties: {
-    skippable: boolean;
-    mandatory: boolean;
-    retryType: "SAME" | "DIFFERENT";
-  };
-  onSkipForward: () => void;
-  onSkipBackward: () => void;
-  resumeSlideIndex: number;
-  isAdminView?: boolean;
-}
+import { Explanation, SlidePlayerProps } from "@/types/course";
+import { Card } from "@/components/ui/card";
+import { slideService } from "@/services/slideService";
 
 function parseWebVTT(vttText: string) {
   const lines = vttText.split("\n");
@@ -153,21 +104,11 @@ const SlidePlayer = ({
         }
 
         // First fetch course details to get materialUrl
-        const courseResponse = await fetch(
-          `${
-            import.meta.env.VITE_BACKEND_URL
-          }/api/tenant-admin/tenants/${tenantId}/courses`
-        );
-
-        if (!courseResponse.ok) {
-          throw new Error("Failed to fetch course details");
-        }
-
-        const courseData = await courseResponse.json();
+        const courseData = await slideService.fetchCourseDetails(tenantId);
 
         // Find the current course in the list
         const currentCourse = courseData.find(
-          (course: any) => course.id === courseId
+          (course) => course.id === courseId
         );
         if (!currentCourse) {
           throw new Error("Current course not found");
@@ -176,34 +117,25 @@ const SlidePlayer = ({
         if (currentCourse.materialUrl) {
           setMaterialUrl(currentCourse.materialUrl);
         }
-        const response = await fetch(
-          `${
-            import.meta.env.VITE_BACKEND_URL
-          }/api/courses/${courseId}/explanations?tenantId=${tenantId}`
+
+        const explanations = await slideService.fetchExplanations(
+          courseId,
+          tenantId
         );
+        setSlideExplanations(explanations);
 
-        if (!response.ok) {
-          throw new Error("Failed to fetch explanations");
-        }
-
-        const data = await response.json();
-
-        if (data.explanations && Array.isArray(data.explanations)) {
-          setSlideExplanations(data.explanations);
-
-          // Set initial explanation
-          const initialExplanation = data.explanations.find(
-            (exp: Explanation) => exp.slide === currentSlideIndex + 1
-          );
-          if (initialExplanation) {
-            setCurrentExplanation(initialExplanation.explanation);
-            if (initialExplanation.explanation_subtitle) {
-              const subtitles = parseWebVTT(
-                initialExplanation.explanation_subtitle
-              );
-              if (subtitles.length > 0) {
-                setCurrentSubtitle(subtitles[0].text);
-              }
+        // Set initial explanation
+        const initialExplanation = explanations.find(
+          (exp: Explanation) => exp.slide === currentSlideIndex + 1
+        );
+        if (initialExplanation) {
+          setCurrentExplanation(initialExplanation.explanation);
+          if (initialExplanation.explanation_subtitle) {
+            const subtitles = parseWebVTT(
+              initialExplanation.explanation_subtitle
+            );
+            if (subtitles.length > 0) {
+              setCurrentSubtitle(subtitles[0].text);
             }
           }
         }
@@ -312,10 +244,7 @@ const SlidePlayer = ({
       audioRef.current.load();
       setProgress(0);
       setIsPlaying(true);
-      // Auto play the audio
       audioRef.current.play().catch((error) => {
-        console.error("Error auto-playing audio:", error);
-        // If autoplay fails, we'll keep the play button visible
         setIsPlaying(false);
       });
     }
@@ -441,29 +370,13 @@ const SlidePlayer = ({
         throw new Error("Missing required parameters");
       }
 
-      const requestBody = {
+      await slideService.updateProgress(
+        courseId,
         tenantId,
-        progress: 100,
-        slideNumber: currentSlideIndex + 1,
-      };
-
-      const response = await fetch(
-        `${
-          import.meta.env.VITE_BACKEND_URL
-        }/api/courses/${courseId}/update-progress`,
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(requestBody),
-        }
+        token,
+        100,
+        currentSlideIndex + 1
       );
-
-      if (!response.ok) {
-        throw new Error("Failed to update progress");
-      }
 
       setShowCompletionModal(true);
       // Pause playback on last slide after completion
@@ -481,6 +394,9 @@ const SlidePlayer = ({
     try {
       setIsGeneratingMCQ(true);
       const tenantId = localStorage.getItem("tenantId");
+      if (!tenantId) {
+        throw new Error("Missing tenant ID");
+      }
 
       // Get the material URL from localStorage
       const storedMaterialUrl = localStorage.getItem(
@@ -489,23 +405,7 @@ const SlidePlayer = ({
       let s3Url;
 
       if (!storedMaterialUrl) {
-        const materialResponse = await fetch(
-          `${
-            import.meta.env.VITE_BACKEND_URL
-          }/api/courses/${courseId}/chatbot-material?tenantId=${tenantId}`
-        );
-
-        if (!materialResponse.ok) {
-          throw new Error("Failed to fetch course material URL");
-        }
-
-        const materialData = await materialResponse.json();
-        s3Url = materialData.materialUrl;
-
-        if (!s3Url) {
-          throw new Error("Material URL is empty in the response");
-        }
-
+        s3Url = await slideService.fetchCourseMaterial(courseId, tenantId);
         localStorage.setItem(`course_material_${courseId}`, s3Url);
       } else {
         s3Url = storedMaterialUrl;
@@ -514,49 +414,31 @@ const SlidePlayer = ({
       // Generate MCQs with abort support
       const controller = new AbortController();
       abortControllerRef.current = controller;
-      const mcqResponse = await fetch(
-        `${import.meta.env.VITE_AI_SERVICE_URL}/generate_mcq`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            presentation_url: s3Url,
-            course_id: courseId,
-            tenant_id: tenantId,
-          }),
-          signal: controller.signal,
-        }
+
+      const mcqData = await slideService.generateMCQ(
+        courseId,
+        tenantId,
+        s3Url,
+        controller.signal
       );
-
-      if (!mcqResponse.ok) {
-        throw new Error("Failed to generate MCQs");
-      }
-
-      const mcqData = await mcqResponse.json();
-
-      if (!mcqData.mcqs || !Array.isArray(mcqData.mcqs)) {
-        throw new Error("Invalid MCQ data received");
-      }
 
       // Only proceed if not aborted
       if (!controller.signal.aborted) {
         localStorage.setItem("currentQuiz", JSON.stringify(mcqData.mcqs));
         window.location.href = `/dashboard/course/${courseId}/quiz?tenantId=${tenantId}`;
       }
-    } catch (error: any) {
-      if (error.name === "AbortError") {
-        // Request was aborted, do nothing
-        setIsGeneratingMCQ(false);
-        return;
+    } catch (error) {
+      if (error instanceof Error) {
+        if (error.name === "AbortError") {
+          // Request was aborted, do nothing
+          setIsGeneratingMCQ(false);
+          return;
+        }
+        console.error("Error preparing quiz:", error);
+        toast.error(error.message);
+      } else {
+        toast.error("Failed to prepare quiz. Please try again.");
       }
-      console.error("Error preparing quiz:", error);
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : "Failed to prepare quiz. Please try again."
-      );
       setIsGeneratingMCQ(false);
     }
   };
@@ -606,28 +488,13 @@ const SlidePlayer = ({
           throw new Error("Missing required parameters");
         }
 
-        const response = await fetch(
-          `${
-            import.meta.env.VITE_BACKEND_URL
-          }/api/courses/${courseId}/update-progress`,
-          {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${token}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              tenantId,
-              progress,
-              slideNumber: currentSlideIndex + 1, // Adding slide number (1-based index)
-            }),
-          }
+        await slideService.updateProgress(
+          courseId,
+          tenantId,
+          token,
+          progress,
+          currentSlideIndex + 1
         );
-
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || "Failed to update progress");
-        }
 
         // Move to next slide
         const nextIndex = currentSlideIndex + 1;
@@ -1029,5 +896,4 @@ const SlidePlayer = ({
     </div>
   );
 };
-
 export default SlidePlayer;

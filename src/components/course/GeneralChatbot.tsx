@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,40 +18,15 @@ import SpeechRecognition, {
   useSpeechRecognition,
 } from "react-speech-recognition";
 import { useSearchParams } from "react-router-dom";
-
-interface ChatMessage {
-  role: "user" | "assistant";
-  content: string;
-}
-
-interface Course {
-  id: string;
-  title: string;
-  description: string;
-}
-
-interface TenantDetails {
-  details: {
-    companyName?: string;
-  };
-}
-
-interface CourseMaterial {
-  materialUrl: string;
-}
-
-interface POC {
-  role: string;
-  name: string;
-  contact: string;
-}
-
-interface GeneralChatbotProps {
-  tenantId: string;
-  initialCourseId?: string;
-  hideCourseSelector?: boolean;
-  onClose?: () => void;
-}
+import {
+  ChatMessage,
+  Course,
+  TenantDetails,
+  CourseMaterial,
+  POC,
+  GeneralChatbotProps,
+} from "@/types/Chat";
+import { chatbotService } from "@/services/generalChatbotService";
 
 const GeneralChatbot = ({
   tenantId,
@@ -102,20 +77,7 @@ const GeneralChatbot = ({
   useEffect(() => {
     const fetchTenantDetails = async () => {
       try {
-        const response = await fetch(
-          `${import.meta.env.VITE_BACKEND_URL}/api/tenants/${tenantId}`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
-
-        if (!response.ok) {
-          throw new Error("Failed to fetch tenant details");
-        }
-
-        const data = await response.json();
+        const data = await chatbotService.fetchTenantDetails(tenantId, token!);
         setTenantDetails(data);
       } catch (error) {
         toast.error("Failed to load tenant details");
@@ -133,58 +95,18 @@ const GeneralChatbot = ({
       if (!selectedCourse || !tenantId || !token) return;
 
       try {
-        // Fetch POCs
-        const pocsResponse = await fetch(
-          `${
-            import.meta.env.VITE_BACKEND_URL
-          }/api/tenants/${tenantId}/courses/${selectedCourse.id}/pocs`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
+        // Fetch POCs and course material in parallel
+        const [pocsData, materialData] = await Promise.all([
+          chatbotService.fetchPOCs(tenantId, selectedCourse.id, token),
+          chatbotService.fetchCourseMaterial(
+            selectedCourse.id,
+            tenantId,
+            token
+          ),
+        ]);
 
-        if (!pocsResponse.ok) {
-          throw new Error("Failed to fetch POCs");
-        }
-
-        const pocsData = await pocsResponse.json();
-        setPocs(pocsData.pocs);
-
-        // Check if we already have the material URL in localStorage
-        const storedMaterialUrl = localStorage.getItem(
-          `course_material_${selectedCourse.id}`
-        );
-
-        if (!storedMaterialUrl) {
-          // Fetch course material URL if not in localStorage
-          const materialResponse = await fetch(
-            `${import.meta.env.VITE_BACKEND_URL}/api/courses/${
-              selectedCourse.id
-            }/chatbot-material?tenantId=${tenantId}`,
-            {
-              headers: {
-                Authorization: `Bearer ${token}`,
-              },
-            }
-          );
-
-          if (!materialResponse.ok) {
-            throw new Error("Failed to fetch course material");
-          }
-
-          const materialData = await materialResponse.json();
-          // Store the material URL in localStorage
-          localStorage.setItem(
-            `course_material_${selectedCourse.id}`,
-            materialData.materialUrl
-          );
-          setCourseMaterial({ materialUrl: materialData.materialUrl });
-        } else {
-          // Use the stored material URL
-          setCourseMaterial({ materialUrl: storedMaterialUrl });
-        }
+        setPocs(pocsData);
+        setCourseMaterial(materialData);
       } catch (error) {
         console.error("Error fetching course data:", error);
       }
@@ -197,23 +119,7 @@ const GeneralChatbot = ({
   useEffect(() => {
     const fetchCourses = async () => {
       try {
-        const response = await fetch(
-          `${
-            import.meta.env.VITE_BACKEND_URL
-          }/api/tenant-admin/tenants/${tenantId}/courses`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-              "Content-Type": "application/json",
-            },
-          }
-        );
-
-        if (!response.ok) {
-          throw new Error("Failed to fetch courses");
-        }
-
-        const coursesData = await response.json();
+        const coursesData = await chatbotService.fetchCourses(tenantId, token!);
         setCourses(coursesData);
       } catch (error) {
         toast.error("Failed to load courses");
@@ -252,66 +158,29 @@ const GeneralChatbot = ({
     setIsLoading(true);
 
     try {
+      let botReply: string;
+
       if (selectedCourse) {
         // Course-specific chat
-        const response = await fetch("http://localhost:8000/chatbot", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            chatHistory: [...messages, userMessage],
-            presentation_url: courseMaterial?.materialUrl,
-            company_name: tenantDetails?.details.companyName || "Your Company",
-            pocs: pocs,
-          }),
-        });
-
-        if (!response.ok) {
-          throw new Error(
-            `API error: ${response.status} ${response.statusText}`
-          );
-        }
-
-        const data = await response.json();
-        const botReply =
-          typeof data.response === "object" && data.response.response
-            ? data.response.response
-            : data.response;
-        const assistantMessage: ChatMessage = {
-          role: "assistant",
-          content: botReply,
-        };
-        setMessages((prev) => [...prev, assistantMessage]);
+        botReply = await chatbotService.sendChatMessage(
+          [...messages, userMessage],
+          courseMaterial!.materialUrl,
+          tenantDetails!.details.companyName || "Your Company",
+          pocs
+        );
       } else {
         // General chat
-        const response = await fetch(
-          `${import.meta.env.VITE_BACKEND_URL}/api/courses/general-chatbot`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              tenantId,
-              chatHistory: [...messages, userMessage],
-            }),
-          }
-        );
-
-        if (!response.ok) {
-          throw new Error("Failed to get response from chatbot");
-        }
-
-        const data = await response.json();
-        const botReply =
-          typeof data.response === "object" && data.response.response
-            ? data.response.response
-            : data.response;
-        const assistantMessage: ChatMessage = {
-          role: "assistant",
-          content: botReply,
-        };
-        setMessages((prev) => [...prev, assistantMessage]);
+        botReply = await chatbotService.sendGeneralChatMessage(tenantId, [
+          ...messages,
+          userMessage,
+        ]);
       }
+
+      const assistantMessage: ChatMessage = {
+        role: "assistant",
+        content: botReply,
+      };
+      setMessages((prev) => [...prev, assistantMessage]);
     } catch (error) {
       toast.error("Failed to get response from chatbot");
     } finally {

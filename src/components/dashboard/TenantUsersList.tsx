@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Card,
   CardContent,
@@ -14,89 +14,48 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
 import { Loader2, CheckCircle, Clock, AlertCircle } from "lucide-react";
-
-interface User {
-  id: string;
-  email: string;
-  name: string;
-  role: string;
-  enrollments: {
-    course: {
-      id: string;
-      title: string;
-    };
-  }[];
-}
-
-interface RecentActivity {
-  email: string;
-  name: string;
-  totalCourses: number;
-  status: string;
-}
-
-interface TenantUsersListProps {
-  tenantId: string;
-  totalCourses: number;
-}
+import {
+  User,
+  RecentActivity,
+  TenantUsersListProps,
+} from "@/types/TenantUsersList";
+import { adminService } from "@/services/adminService";
 
 const TenantUsersList = ({ tenantId, totalCourses }: TenantUsersListProps) => {
   const [users, setUsers] = useState<User[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [isLoadingActivity, setIsLoadingActivity] = useState(true);
 
   useEffect(() => {
-    const fetchUsers = async () => {
+    const fetchData = async () => {
       try {
-        setIsLoading(true);
+        setLoading(true);
         setError(null);
-        const response = await fetch(
-          `${
-            import.meta.env.VITE_BACKEND_URL
-          }/api/tenant-admin/tenants/${tenantId}/users`
-        );
 
-        if (!response.ok) {
-          throw new Error("Failed to fetch users");
-        }
+        // Fetch users and recent activity in parallel
+        const [usersData, activityData] = await Promise.all([
+          adminService.fetchTenantUsers(tenantId),
+          adminService.fetchRecentActivity(tenantId),
+        ]);
 
-        const data = await response.json();
-        setUsers(data);
+        setUsers(usersData);
+        setRecentActivity(activityData);
       } catch (error) {
-        console.error("Error fetching users:", error);
-        setError("Failed to load users. Please try again later.");
+        console.error("Error fetching data:", error);
+        setError("Failed to load data. Please try again later.");
       } finally {
-        setIsLoading(false);
-      }
-    };
-
-    const fetchRecentActivity = async () => {
-      try {
-        setIsLoadingActivity(true);
-        const response = await fetch(
-          `${
-            import.meta.env.VITE_BACKEND_URL
-          }/api/admin/dashboard/recent-activity?tenantId=${tenantId}`
-        );
-        if (!response.ok) throw new Error("Failed to fetch recent activity");
-        const data = await response.json();
-        setRecentActivity(data);
-      } catch (error) {
-        setRecentActivity([]);
-      } finally {
+        setLoading(false);
         setIsLoadingActivity(false);
       }
     };
 
-    fetchUsers();
-    fetchRecentActivity();
+    fetchData();
   }, [tenantId]);
 
-  if (isLoading || isLoadingActivity) {
+  if (loading || isLoadingActivity) {
     return (
       <div className="flex items-center justify-center py-8">
         <Loader2 className="h-8 w-8 animate-spin text-complybrand-600" />
@@ -120,7 +79,7 @@ const TenantUsersList = ({ tenantId, totalCourses }: TenantUsersListProps) => {
     const activity = recentActivity.find((a) => a.email === user.email);
     return {
       ...user,
-      coursesCompleted: activity ? activity.totalCourses : 0,
+      coursesInProgress: activity ? activity.coursesInProgress : 0,
       totalCourses,
       status: activity ? activity.status : "-",
     };
@@ -150,7 +109,7 @@ const TenantUsersList = ({ tenantId, totalCourses }: TenantUsersListProps) => {
                 <TableCell className="font-medium">{user.name}</TableCell>
                 <TableCell>{user.email}</TableCell>
                 <TableCell>
-                  {user.coursesCompleted}/{user.totalCourses}
+                  {user.coursesInProgress}/{user.totalCourses}
                 </TableCell>
                 <TableCell>
                   {user.status === "Completed" ? (

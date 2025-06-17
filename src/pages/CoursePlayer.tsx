@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import {
   useParams,
   useNavigate,
@@ -11,70 +11,16 @@ import CourseNotFound from "@/components/course/CourseNotFound";
 import ChatHelp from "@/components/course/ChatHelp";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
-} from "@/components/ui/card";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { Slide, CoursePlayerProps } from "@/types/CoursePlayer";
+import { adminService } from "@/services/adminService";
 
-// API endpoints for a real implementation
-const API_ENDPOINTS = {
-  // SSO Login
-  SSO_LOGIN: "/api/auth/sso/login",
-  SSO_CALLBACK: "/api/auth/sso/callback",
-
-  // Admin/Superuser Login
-  ADMIN_LOGIN: "/api/auth/login",
-
-  // Course Content
-  GET_COURSE_SLIDES: (courseId: string) => `/api/courses/${courseId}/slides`,
-  GET_COURSE_EXPLANATIONS: (courseId: string, organizationId: string) =>
-    `/api/courses/${courseId}/explanations?organizationId=${organizationId}`,
-  GET_PRESENTER_AVATAR: (courseId: string) =>
-    `/api/courses/${courseId}/presenter`,
-  GET_SLIDE_AUDIO: (courseId: string, slideId: string) =>
-    `/api/courses/${courseId}/slides/${slideId}/audio`,
-
-  // Course Progress
-  UPDATE_PROGRESS: (courseId: string) => `/api/courses/${courseId}/progress`,
-
-  // S3 File Paths (these would be returned by the API, not called directly)
-  S3_PPT_PATH:
-    "s3://myaudiouploadbucket/Blue White Professional Modern Safety Training Presentation.pptx",
-  S3_SLIDE_IMAGES_PATH: (courseId: string) =>
-    `s3://course-content/${courseId}/slides/`,
-  S3_AUDIO_PATH: (courseId: string) => `s3://course-content/${courseId}/audio/`,
-};
-
-interface Slide {
-  id: string;
-  title: string;
-  content: string;
-  completed: boolean;
-}
-
-interface CoursePlayerProps {
-  courseId: string;
-  tenantId: string;
-  token: string;
-  progress: number;
-  properties?: {
-    mandatory: boolean;
-    skippable: boolean;
-    retryType: "DIFFERENT" | "SAME";
-  } | null;
-}
-
-const CoursePlayer = ({
+const CoursePlayer: React.FC<CoursePlayerProps> = ({
   courseId,
   tenantId,
   token,
   progress,
   properties,
-}: CoursePlayerProps) => {
+}) => {
   const { courseId: urlCourseId } = useParams<{ courseId: string }>();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -88,12 +34,16 @@ const CoursePlayer = ({
 
   // Get properties from navigation state or props
   const stateProperties = location.state?.properties;
-  const courseProperties = stateProperties ||
-    properties || {
-      mandatory: true,
-      skippable: false,
-      retryType: "SAME" as const,
-    };
+  const courseProperties = useMemo(
+    () =>
+      stateProperties ||
+      properties || {
+        mandatory: true,
+        skippable: false,
+        retryType: "SAME" as const,
+      },
+    [stateProperties, properties]
+  );
 
   const [slides, setSlides] = useState<Slide[]>([]);
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
@@ -126,27 +76,11 @@ const CoursePlayer = ({
       }
 
       try {
-        // Fetch explanations array
-        const response = await fetch(
-          `${
-            import.meta.env.VITE_BACKEND_URL
-          }/api/courses/${courseId}/explanations?tenantId=${urlTenantId}`,
-          {
-            headers: {
-              Authorization: `Bearer ${urlToken}`,
-              "Content-Type": "application/json",
-            },
-          }
+        const { explanations } = await adminService.fetchCourseExplanations(
+          courseId,
+          urlTenantId,
+          urlToken
         );
-
-        if (!response.ok) {
-          throw new Error("Failed to fetch explanations");
-        }
-
-        const data = await response.json();
-
-        // The response is an object with an explanations array
-        const explanations = data.explanations || [];
 
         if (!Array.isArray(explanations)) {
           throw new Error("Invalid explanations format received from API");
@@ -164,10 +98,13 @@ const CoursePlayer = ({
 
         // Convert explanations to slides format
         const slidesData = explanations.map(
-          (explanation: any, index: number) => ({
+          (explanation: { content: string } | string, index: number) => ({
             id: `slide-${index + 1}`,
             title: `Slide ${index + 1}`,
-            content: explanation.content || explanation, // Handle both object and string formats
+            content:
+              typeof explanation === "string"
+                ? explanation
+                : explanation.content,
             completed: false,
           })
         );

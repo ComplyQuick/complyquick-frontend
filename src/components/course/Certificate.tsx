@@ -2,17 +2,11 @@ import React, { forwardRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Download } from "lucide-react";
 import { uploadCertificateToDrive } from "@/services/googleDriveService";
-
-interface CertificateProps {
-  courseName: string;
-  completionDate: string;
-  score: number;
-  userName?: string;
-}
+import { CertificateProps } from "@/types/Certificate";
 
 const Certificate = forwardRef<HTMLDivElement, CertificateProps>(
   (props, ref) => {
-    const { courseName, completionDate, score, userName } = props;
+    const { courseName, completionDate, score, userName = "User" } = props;
 
     const downloadCertificate = async () => {
       if (ref && "current" in ref && ref.current) {
@@ -35,7 +29,7 @@ const Certificate = forwardRef<HTMLDivElement, CertificateProps>(
 
           // Generate filename
           const fileName = `${courseName.replace(/\s+/g, "-")}-${
-            userName?.replace(/\s+/g, "-") || "Certificate"
+            userName.replace(/\s+/g, "-") || "Certificate"
           }-${new Date().toISOString().split("T")[0]}.png`;
 
           // Upload to Google Drive
@@ -89,7 +83,7 @@ const Certificate = forwardRef<HTMLDivElement, CertificateProps>(
                 <div>
                   <p className="text-xl text-gray-600">Presented to:</p>
                   <p className="text-4xl font-bold text-gray-900 mt-2">
-                    {userName || "Student Name"}
+                    {userName}
                   </p>
                 </div>
 

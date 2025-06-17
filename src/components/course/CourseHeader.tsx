@@ -2,11 +2,7 @@ import React from "react";
 import { Link } from "react-router-dom";
 import { ArrowLeft, Home } from "lucide-react";
 import { Button } from "@/components/ui/button";
-
-interface CourseHeaderProps {
-  courseTitle: string;
-  onReturn: () => void;
-}
+import { CourseHeaderProps } from "@/types/CourseHeader";
 
 const CourseHeader = ({ courseTitle, onReturn }: CourseHeaderProps) => {
   return (

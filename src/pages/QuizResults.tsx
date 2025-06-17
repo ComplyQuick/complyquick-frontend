@@ -17,20 +17,13 @@ import { uploadCertificateToDrive } from "@/services/googleDriveService";
 import { jwtDecode } from "jwt-decode";
 import { Loader } from "@/components/ui/loader";
 import { useAuthStore } from "@/store/authStore";
-
-interface QuizResult {
-  question: string;
-  userAnswer: string;
-  correctAnswer: string;
-  isCorrect: boolean;
-  usedHint: boolean;
-}
+import { QuizResult } from "@/types/QuizResults";
+import { userService } from "@/services/userService";
 
 const QuizResults = () => {
   const navigate = useNavigate();
   const { courseId } = useParams();
   let courseIdFinal = courseId;
-  // Fallback: extract courseId from URL if undefined or empty
   if (!courseIdFinal) {
     const match = window.location.pathname.match(/course\/([\w-]+)/);
     if (match && match[1]) {
@@ -80,13 +73,8 @@ const QuizResults = () => {
     // Fetch user name from profile endpoint
     const token = localStorage.getItem("token");
     if (token) {
-      fetch(`${import.meta.env.VITE_BACKEND_URL}/api/user-dashboard/profile`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-      })
-        .then((res) => res.json())
+      userService
+        .fetchUserProfile(token)
         .then((data) => {
           if (data?.name) setUserName(data.name);
         })
@@ -98,17 +86,16 @@ const QuizResults = () => {
   // Fetch course name when tenantId and courseIdFinal are available
   useEffect(() => {
     if (tenantId && courseIdFinal) {
-      fetch(
-        `${
-          import.meta.env.VITE_BACKEND_URL
-        }/api/tenant-admin/tenants/${tenantId}/courses`
-      )
-        .then((res) => res.json())
-        .then((courses) => {
-          const course = courses.find((c: any) => c.id === courseIdFinal);
-          setCourseName(course?.title || "Course");
-        })
-        .catch(() => setCourseName("Course"));
+      const token = localStorage.getItem("token");
+      if (token) {
+        userService
+          .fetchCourseDetails(tenantId, token)
+          .then((courses) => {
+            const course = courses.find((c) => c.id === courseIdFinal);
+            setCourseName(course?.title || "Course");
+          })
+          .catch(() => setCourseName("Course"));
+      }
     }
   }, [tenantId, courseIdFinal]);
 
@@ -146,46 +133,26 @@ const QuizResults = () => {
         setIsGeneratingMCQ(true);
         const tenantId = localStorage.getItem("tenantId");
         const token = localStorage.getItem("token");
+        if (!token || !tenantId) {
+          toast.error("Missing required credentials");
+          return;
+        }
+
         // Fetch course details to get materialUrl
-        const courseList = await fetch(
-          `${
-            import.meta.env.VITE_BACKEND_URL
-          }/api/tenant-admin/tenants/${tenantId}/courses`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-              "Content-Type": "application/json",
-            },
-          }
-        );
-        const courses = await courseList.json();
-        const course = courses.find((c: any) => c.id === courseIdFinal);
+        const courses = await userService.fetchCourseDetails(tenantId, token);
+        const course = courses.find((c) => c.id === courseIdFinal);
         if (!course || !course.materialUrl) {
           toast.error("Course material not found for MCQ generation.");
           return;
         }
-        // Call AI service
-        const mcqResponse = await fetch(
-          `${import.meta.env.VITE_AI_SERVICE_URL}/generate_mcq`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              presentation_url: course.materialUrl,
-              course_id: courseIdFinal,
-              tenant_id: tenantId,
-            }),
-          }
+
+        // Generate new MCQs
+        const mcqData = await userService.generateMCQs(
+          course.materialUrl,
+          courseIdFinal,
+          tenantId
         );
-        if (!mcqResponse.ok) {
-          toast.error("Failed to generate new quiz questions.");
-          return;
-        }
-        const mcqData = await mcqResponse.json();
-        if (!mcqData.mcqs || !Array.isArray(mcqData.mcqs)) {
-          toast.error("Invalid MCQ data received.");
-          return;
-        }
+
         localStorage.setItem("currentQuiz", JSON.stringify(mcqData.mcqs));
         localStorage.removeItem("quizResults");
         window.history.back();
@@ -231,35 +198,26 @@ const QuizResults = () => {
         let userId = "";
         if (token) {
           try {
-            const decoded: any = jwtDecode(token);
+            interface DecodedToken {
+              sub?: string;
+              id?: string;
+              userId?: string;
+            }
+            const decoded = jwtDecode<DecodedToken>(token);
             userId = decoded.sub || decoded.id || decoded.userId || "";
           } catch (e) {
             console.error("Failed to decode token", e);
           }
         }
         if (userId && courseIdFinal && driveUrl) {
-          fetch(
-            `${
-              import.meta.env.VITE_BACKEND_URL
-            }/api/user-dashboard/certificates/store`,
+          await userService.storeCertificate(
             {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${token}`,
-              },
-              body: JSON.stringify({
-                userId,
-                courseId: courseIdFinal,
-                certificateUrl: driveUrl,
-              }),
-            }
-          )
-            .then((res) => res.json())
-            
-            .catch((err) => {
-              console.error("Failed to store certificate in backend:", err);
-            });
+              userId,
+              courseId: courseIdFinal,
+              certificateUrl: driveUrl,
+            },
+            token!
+          );
         }
       } catch (error) {
         console.error("Error uploading certificate:", error);
@@ -390,9 +348,7 @@ const QuizResults = () => {
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-blue-600 hover:underline"
-                      >
-                        View Certificate on Google Drive
-                      </a>
+                      ></a>
                     </span>
                   ) : (
                     "Generating your certificate..."

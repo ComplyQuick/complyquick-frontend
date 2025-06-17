@@ -3,7 +3,6 @@ import { useParams, useSearchParams, useNavigate, Link } from "react-router-dom"
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { CheckCircle2, AlertCircle, Home, ArrowLeft } from "lucide-react";
-import Navbar from "@/components/layout/Navbar";
 
 const ResultPage = () => {
   const { courseId } = useParams<{ courseId: string }>();

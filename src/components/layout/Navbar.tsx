@@ -1,3 +1,4 @@
+import React from "react";
 import { useState, useEffect } from "react";
 import {
   Link,
@@ -10,16 +11,6 @@ import { Menu, X, LogIn, AtSign, Mail, ArrowLeft, LogOut } from "lucide-react";
 import { UserRole } from "../../App";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import {
-  AlertDialog,
-  AlertDialogContent,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogCancel,
-  AlertDialogAction,
-} from "@/components/ui/alert-dialog";
-import {
   Dialog,
   DialogContent,
   DialogHeader,
@@ -29,14 +20,9 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { toast } from "sonner";
 import { motion } from "framer-motion";
 import { useAuthStore } from "@/store/authStore";
-
-interface NavbarProps {
-  userRole?: UserRole;
-  onLogin?: (role: UserRole) => void;
-}
+import { NavbarProps } from "@/types/Navbar";
 
 const Navbar = ({ userRole, onLogin }: NavbarProps) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);

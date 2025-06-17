@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { Link, useSearchParams, useNavigate } from "react-router-dom";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
@@ -34,43 +34,12 @@ import {
 } from "@/components/ui/select";
 import { Loader } from "@/components/ui/loader";
 import { useAuthStore } from "@/store/authStore";
-
-interface CourseData {
-  id: string;
-  courseId?: string;
-  title: string;
-  description: string;
-  duration: string;
-  skippable: boolean;
-  mandatory: boolean;
-  retryType: "DIFFERENT" | "SAME";
-  enrolledUsers: number;
-  properties?: {
-    skippable: boolean;
-    mandatory: boolean;
-    retryType: "DIFFERENT" | "SAME";
-  };
-  tags?: string[];
-}
-
-interface UserProfile {
-  success: boolean;
-  name: string;
-  email: string;
-}
-
-interface ProgressData {
-  courseId: string;
-  progress: number;
-}
-
-interface UserCourse {
-  courseId: string;
-  canDownloadCertificate?: boolean;
-  certificateUrl?: string;
-  canRetakeQuiz?: boolean;
-  // Add other fields as needed
-}
+import {
+  CourseData,
+  UserProfile,
+  ProgressData,
+  UserCourse,
+} from "@/types/UserDashboard";
 
 const UserDashboard = () => {
   const [activeTab, setActiveTab] = useState<

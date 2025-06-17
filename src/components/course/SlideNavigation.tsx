@@ -1,16 +1,8 @@
+import React from "react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { CheckCircle } from "lucide-react";
-
-interface SlideNavigationProps {
-  totalSlides: number;
-  currentSlide: number;
-  onSlideSelect: (index: number) => void;
-  slideExplanations: { content: string }[];
-  progress: number;
-  maxVisitedSlide: number;
-  isAdminView?: boolean;
-}
+import { SlideNavigationProps } from "@/types/course";
 
 const SlideNavigation = ({
   totalSlides,

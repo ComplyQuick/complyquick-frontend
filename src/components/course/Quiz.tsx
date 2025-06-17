@@ -9,18 +9,7 @@ import { Lightbulb, AlertTriangle } from "lucide-react";
 import ProctorRecorder, {
   ProctorRecorderHandle,
 } from "@/components/quiz/ProctorRecorder";
-
-interface MCQ {
-  question: string;
-  choices: {
-    a: string;
-    b: string;
-    c: string;
-    d: string;
-  };
-  correctAnswer: string;
-  hint: string;
-}
+import { MCQ } from "@/types/quiz";
 
 const Quiz = () => {
   const [mcqs, setMcqs] = useState<MCQ[]>([]);

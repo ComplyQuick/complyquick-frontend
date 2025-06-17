@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import { Button } from "@/components/ui/button";
@@ -19,88 +19,17 @@ import {
   Trash2,
   Pencil,
 } from "lucide-react";
-import UsersList from "@/components/dashboard/UsersList";
 import CourseCard from "@/components/dashboard/CourseCard";
 import AddOrganizationForm from "@/components/forms/AddOrganizationForm";
 import AddCourseForm from "@/components/forms/AddCourseForm";
 import { toast } from "sonner";
 import { Menu } from "@headlessui/react";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
-
-interface Course {
-  id: string;
-  title: string;
-  description: string;
-  duration: number;
-  tags: string[];
-  learningObjectives: string[];
-  targetAudience: string[];
-  materialUrl: string;
-  createdAt: string;
-}
-
-interface Tenant {
-  id: string;
-  name: string;
-  domain: string;
-  adminEmail: string;
-  details?: {
-    presidingOfficerEmail?: string;
-    poshCommitteeEmail?: string;
-    hrContactName?: string;
-    hrContactEmail?: string;
-    hrContactPhone?: string;
-    ceoName?: string;
-    ceoEmail?: string;
-    ceoContact?: string;
-    ctoName?: string;
-    ctoEmail?: string;
-    ctoContact?: string;
-    ccoEmail?: string;
-    ccoContact?: string;
-    croName?: string;
-    croEmail?: string;
-    croContact?: string;
-    legalOfficerName?: string;
-    legalOfficerEmail?: string;
-    legalOfficerContact?: string;
-  };
-  users?: {
-    id: string;
-    name: string;
-    email: string;
-    role: string;
-  }[];
-  courses?: {
-    id: string;
-    title: string;
-  }[];
-}
-
-interface User {
-  id: string;
-  name: string;
-  email: string;
-  department: string;
-  coursesCompleted: number;
-  totalCourses: number;
-  lastActivity: string;
-  role?: string;
-  status?: string;
-}
-
-interface CourseEnrolledUsers {
-  courseId: string;
-  totalEnrolledUsers: number;
-}
-
-interface RecentTenant {
-  id: string;
-  name: string;
-  domain: string;
-  userCount: number;
-  enabledCourseCount: number;
-}
+import {
+  Course,
+  Tenant,
+  CourseEnrolledUsers,
+  RecentTenant,
+} from "@/types/SuperuserDashboard";
 
 const SuperUserDashboard = () => {
   const [activeTab, setActiveTab] = useState("overview");
@@ -112,7 +41,6 @@ const SuperUserDashboard = () => {
   const [error, setError] = useState<string | null>(null);
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
   const [showCourseActions, setShowCourseActions] = useState(false);
-  const [showUpdateModal, setShowUpdateModal] = useState(false);
   const [updateCourse, setUpdateCourse] = useState<Course | null>(null);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [enrolledUsersData, setEnrolledUsersData] = useState<
@@ -681,27 +609,6 @@ const SuperUserDashboard = () => {
                 </div>
               </div>
             </TabsContent>
-
-            {/* <TabsContent value="users" className="animate-fade-in">
-              <Card className="overflow-hidden bg-card/50 backdrop-blur-sm border border-border/50">
-                <CardContent className="pt-6">
-                  <UsersList
-                    users={tenants.flatMap((tenant) =>
-                      (tenant.users || []).map((user) => ({
-                        id: user.id,
-                        name: user.name,
-                        email: user.email,
-                        department: "N/A",
-                        coursesCompleted: 0,
-                        totalCourses: tenant.courses?.length || 0,
-                        lastActivity: "N/A",
-                      }))
-                    )}
-                    title="All Platform Users"
-                  />
-                </CardContent>
-              </Card>
-            </TabsContent> */}
           </Tabs>
         </div>
       </main>

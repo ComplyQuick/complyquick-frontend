@@ -1,26 +1,14 @@
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
 import { Link, useNavigate } from "react-router-dom";
 import { useState, useEffect, useRef } from "react";
 import CourseDetailsModal from "./CourseDetailsModal";
 import {
   Users,
-  MessageCircle,
   Award,
   MoreVertical,
   Trash2,
   Pencil,
-  Play,
-  PlayCircle,
-  Download,
-  Clock,
   Check,
 } from "lucide-react";
 import {
@@ -29,60 +17,11 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import GeneralChatbot from "../course/GeneralChatbot";
-import { Menu } from "@headlessui/react";
 import { toast } from "sonner";
-
-interface CourseCardProps {
-  id: string;
-  courseId: string;
-  title: string;
-  description: string;
-  duration: string;
-  enrolledUsers: number;
-  progress?: number;
-  userRole: "superuser" | "admin" | "employee";
-  actionButton?: React.ReactNode;
-  tenantId: string;
-  token: string;
-  className?: string;
-  properties?: {
-    mandatory: boolean;
-    skippable: boolean;
-    retryType: "DIFFERENT" | "SAME";
-    isEnabled?: boolean;
-  } | null;
-  learningObjectives?: string;
-  tags?: string;
-  onClick?: () => void;
-  onTakeQuiz?: () => void;
-  canRetakeQuiz?: boolean;
-  canDownloadCertificate?: boolean;
-  certificateUrl?: string;
-  explanations?: Array<{
-    id: string;
-    content: string;
-    slideId: string;
-  }>;
-  courseDetails?: {
-    id: string;
-    title: string;
-    description: string;
-    learningObjectives: string;
-    properties: {
-      mandatory: boolean;
-      skippable: boolean;
-      retryType: "DIFFERENT" | "SAME";
-    };
-  };
-  onUpdateCourse?: () => void;
-}
+import { CourseCardProps } from "@/types/course";
+import { courseService } from "@/services/courseService";
 
 const CourseCard = ({
   id,
@@ -130,7 +69,6 @@ const CourseCard = ({
   const courseProperties = properties || defaultProperties;
   const isMandatory = courseProperties.mandatory;
 
-  // SVG patterns for backgrounds
   const mandatoryPattern =
     'url(\'data:image/svg+xml;utf8,<svg width="100" height="100" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><rect width="20" height="20" fill="%23f87171"/><path d="M0 0L20 20M20 0L0 20" stroke="%23fff" stroke-width="1" stroke-opacity="0.08"/></svg>\')';
   const nonMandatoryPattern =
@@ -140,35 +78,6 @@ const CourseCard = ({
     : "bg-blue-400 dark:bg-blue-600";
   const pattern = isMandatory ? mandatoryPattern : nonMandatoryPattern;
 
-  const titleColor = "text-white";
-  const cardBorder = "border-0";
-  const cardShadow = "shadow-lg hover:shadow-xl transition-all duration-300";
-
-  const progressIndicator = isMandatory
-    ? "bg-gradient-to-r from-red-400 to-red-500 dark:from-red-500 dark:to-red-600"
-    : "bg-gradient-to-r from-blue-400 to-blue-500 dark:from-blue-500 dark:to-blue-600";
-
-  const getButtonText = () => {
-    if (progress === 100) return "Start Again";
-    if (progress > 0) return "Resume Course";
-    return "Start Course";
-  };
-
-  const buttonClass =
-    progress === 100
-      ? "bg-green-600 hover:bg-green-700 text-white"
-      : progress > 0
-      ? "bg-black text-white border border-white hover:bg-gray-900"
-      : isMandatory
-      ? "bg-[#1746FF] text-white hover:bg-[#1746FF]/90"
-      : "border border-white text-white bg-transparent hover:bg-white/10";
-
-  const handleChatbotClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setIsChatbotOpen(true);
-  };
-
-  // Download certificate handler
   const handleCertificateDownload = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!certificateUrl) return;
@@ -211,26 +120,12 @@ const CourseCard = ({
     if (isToggling || isEnabled === null) return;
     setIsToggling(true);
     try {
-      const response = await fetch(
-        `${
-          import.meta.env.VITE_BACKEND_URL
-        }/api/tenant-admin/tenants/${tenantId}/courses/${courseId}/toggle`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ isEnabled: !isEnabled }),
-        }
+      const data = await courseService.toggleCourse(
+        tenantId,
+        courseId,
+        token,
+        !isEnabled
       );
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Failed to toggle course status");
-      }
-
-      const data = await response.json();
       setIsEnabled(!isEnabled);
     } catch (e) {
       toast.error("Failed to toggle course status");
@@ -648,16 +543,7 @@ const CourseCard = ({
                   try {
                     const courseDeleteId =
                       userRole === "superuser" ? id : courseId;
-                    const res = await fetch(
-                      `${
-                        import.meta.env.VITE_BACKEND_URL
-                      }/api/superadmin/course/${courseDeleteId}`,
-                      {
-                        method: "DELETE",
-                        headers: { "Content-Type": "application/json" },
-                      }
-                    );
-                    if (!res.ok) throw new Error("Failed to delete course");
+                    await courseService.deleteCourse(courseDeleteId);
                     toast.success("Course deleted successfully");
                     setShowCourseActions(false);
                     // Optionally trigger a refresh in parent
