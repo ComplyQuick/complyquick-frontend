@@ -2,13 +2,13 @@ export interface Course {
   id: string;
   title: string;
   description: string;
-  learningObjectives: string;
+  learningObjectives: string | string[];
   properties: {
     mandatory: boolean;
     skippable: boolean;
     retryType: "SAME" | "DIFFERENT";
   };
-  tags?: string;
+  tags?: string | string[];
   pocs?: Array<{
     id: string;
     name: string;

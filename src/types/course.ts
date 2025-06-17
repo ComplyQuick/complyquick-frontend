@@ -90,7 +90,7 @@ export interface SlideControlsProps {
 
 export interface CourseCardProps {
   id: string;
-  courseId: string;
+  courseId?: string;
   title: string;
   description: string;
   duration: string;
@@ -98,8 +98,8 @@ export interface CourseCardProps {
   progress?: number;
   userRole: "superuser" | "admin" | "employee";
   actionButton?: React.ReactNode;
-  tenantId: string;
-  token: string;
+  tenantId?: string;
+  token?: string;
   className?: string;
   properties?: {
     mandatory: boolean;
@@ -107,8 +107,8 @@ export interface CourseCardProps {
     retryType: "DIFFERENT" | "SAME";
     isEnabled?: boolean;
   } | null;
-  learningObjectives?: string;
-  tags?: string;
+  learningObjectives?: string | string[];
+  tags?: string | string[];
   onClick?: () => void;
   onTakeQuiz?: () => void;
   canRetakeQuiz?: boolean;
@@ -155,11 +155,7 @@ export interface CourseDetailsModalProps {
       skippable: boolean;
       retryType: "SAME" | "DIFFERENT";
     };
-    pocs?: Array<{
-      id: string;
-      name: string;
-      email: string;
-    }>;
+    pocs?: POC[];
     tags?: string;
   };
   onUpdate?: () => void;

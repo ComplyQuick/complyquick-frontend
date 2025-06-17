@@ -1,78 +1,21 @@
 import { User, RecentActivity } from "@/types/TenantUsersList";
 import { Tenant } from "@/types/SuperuserDashboard";
 import { Explanation, Slide } from "@/types/course";
-import { Course, Statistics, Activity } from "@/types/AdminDashboard";
+import {
+  Course,
+  Statistics,
+  Activity,
+  TenantDetailsPayload,
+  TenantDetailsResponse,
+  EnhanceExplanationsPayload,
+  EnhanceExplanationsResponse,
+  UpdateExplanationPayload,
+  UpdateExplanationResponse,
+  AssignCoursePayload,
+} from "@/types/AdminDashboard";
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
 const AI_SERVICE_URL = import.meta.env.VITE_AI_SERVICE_URL;
-
-export interface TenantDetailsPayload {
-  hrContactName?: string;
-  hrContactEmail?: string;
-  hrContactPhone?: string;
-  ceoName?: string;
-  ceoEmail?: string;
-  ceoContact?: string;
-  ctoName?: string;
-  ctoEmail?: string;
-  ctoContact?: string;
-}
-
-export interface TenantDetailsResponse {
-  details: {
-    hrContactName?: string;
-    hrContactEmail?: string;
-    hrContactPhone?: string;
-    ceoName?: string;
-    ceoEmail?: string;
-    ceoContact?: string;
-    ctoName?: string;
-    ctoEmail?: string;
-    ctoContact?: string;
-  };
-}
-
-export interface EnhanceExplanationsPayload {
-  tenantId: string;
-  courseId: string;
-  queryPrompt: string;
-  batchSize: number;
-}
-
-export interface EnhanceExplanationsResponse {
-  success: boolean;
-  message: string;
-  explanations: Explanation[];
-}
-
-export interface UpdateExplanationPayload {
-  courseId: string;
-  tenantId: string;
-  slideIndex: number;
-  explanation: string;
-}
-
-export interface UpdateExplanationResponse {
-  success: boolean;
-  message: string;
-  slide: {
-    explanation: string;
-    explanation_audio: string;
-  };
-}
-
-export interface AssignCoursePayload {
-  courseId: string;
-  tenantId: string;
-  skippable: boolean;
-  mandatory: boolean;
-  retryType: "SAME" | "DIFFERENT";
-  pocs: Array<{
-    role: string;
-    name: string;
-    contact: string;
-  }>;
-}
 
 export const adminService = {
   /**

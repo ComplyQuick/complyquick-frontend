@@ -44,11 +44,23 @@ const CourseDetailsModal = ({
 }: CourseDetailsModalProps) => {
   const [editMode, setEditMode] = React.useState(false);
   const [editProperties, setEditProperties] = React.useState(course.properties);
-  const [editPocs, setEditPocs] = React.useState<POC[]>(course.pocs || []);
+  const [editPocs, setEditPocs] = React.useState<POC[]>(
+    (course.pocs || []).map((poc) => ({
+      ...poc,
+      role: poc.role || "",
+      contact: poc.contact || "",
+    }))
+  );
 
   React.useEffect(() => {
     setEditProperties(course.properties);
-    setEditPocs(course.pocs || []);
+    setEditPocs(
+      (course.pocs || []).map((poc) => ({
+        ...poc,
+        role: poc.role || "",
+        contact: poc.contact || "",
+      }))
+    );
   }, [course]);
 
   const handlePocChange = (idx: number, field: keyof POC, value: string) => {
@@ -74,7 +86,13 @@ const CourseDetailsModal = ({
   const handleCancel = () => {
     setEditMode(false);
     setEditProperties(course.properties);
-    setEditPocs(course.pocs || []);
+    setEditPocs(
+      (course.pocs || []).map((poc) => ({
+        ...poc,
+        role: poc.role || "",
+        contact: poc.contact || "",
+      }))
+    );
   };
 
   const handleSave = async () => {

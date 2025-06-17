@@ -23,7 +23,7 @@ import {
 } from "@/components/ui/form";
 import { toast } from "sonner";
 import { AddTenantDetailsFormProps } from "@/types/AddTenantDetailsForm";
-import { adminService, TenantDetailsPayload } from "@/services/adminService";
+import { adminService } from "@/services/adminService";
 
 // Define the form schema with validations
 const tenantDetailsSchema = z.object({
@@ -266,7 +266,7 @@ const AddTenantDetailsForm = ({
               </Button>
               <Button
                 type="submit"
-                className="bg-complybrand-700 hover:bg-complybrand-800"
+                className="bg-complybrand-700 hover:bg-complybrand-800 text-white"
                 disabled={isLoading}
               >
                 {isLoading ? "Saving..." : "Save Settings"}

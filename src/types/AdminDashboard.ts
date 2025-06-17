@@ -1,24 +1,16 @@
 import { User as BaseUser } from "./UsersList";
+import { Course as BaseCourse } from "./AddCourseForm";
+import { POC } from "./course";
 
-export interface Course {
-  id: string;
+export interface Course
+  extends Omit<BaseCourse, "learningObjectives" | "tags"> {
   courseId: string;
-  title: string;
-  description: string;
   duration: string;
   enrolledUsers: number;
   learningObjectives: string[];
-  mandatory: boolean;
-  skippable: boolean;
-  retryType: "SAME" | "DIFFERENT";
   tags: string[];
   targetAudience: string;
   isEnabled: boolean;
-  pocs?: Array<{
-    id: string;
-    name: string;
-    email: string;
-  }>;
 }
 
 export interface User {
@@ -52,4 +44,62 @@ export interface Activity {
   totalCourses: number;
   status: string;
 }
- 
+
+export interface TenantDetailsPayload {
+  hrContactName?: string;
+  hrContactEmail?: string;
+  hrContactPhone?: string;
+  ceoName?: string;
+  ceoEmail?: string;
+  ceoContact?: string;
+  ctoName?: string;
+  ctoEmail?: string;
+  ctoContact?: string;
+}
+
+export interface TenantDetailsResponse {
+  details: TenantDetailsPayload;
+}
+
+export interface EnhanceExplanationsPayload {
+  tenantId: string;
+  courseId: string;
+  queryPrompt: string;
+  batchSize: number;
+}
+
+export interface EnhanceExplanationsResponse {
+  success: boolean;
+  message: string;
+  explanations: Array<{
+    slide: number;
+    content: string;
+    explanation: string;
+    explanation_audio: string;
+  }>;
+}
+
+export interface UpdateExplanationPayload {
+  courseId: string;
+  tenantId: string;
+  slideIndex: number;
+  explanation: string;
+}
+
+export interface UpdateExplanationResponse {
+  success: boolean;
+  message: string;
+  slide: {
+    explanation: string;
+    explanation_audio: string;
+  };
+}
+
+export interface AssignCoursePayload {
+  courseId: string;
+  tenantId: string;
+  skippable: boolean;
+  mandatory: boolean;
+  retryType: "SAME" | "DIFFERENT";
+  pocs: Array<Omit<POC, "id" | "email">>;
+}

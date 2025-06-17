@@ -6,6 +6,7 @@ const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
 const AI_SERVICE_URL = import.meta.env.VITE_AI_SERVICE_URL;
 
 interface UserProfile {
+  success: boolean;
   name: string;
   email: string;
   [key: string]: unknown;
@@ -106,5 +107,93 @@ export const userService = {
     if (!response.ok) {
       throw new Error("Failed to store certificate");
     }
+  },
+
+  async fetchEnabledCourses(
+    tenantId: string,
+    token: string
+  ): Promise<CourseData[]> {
+    const response = await fetch(
+      `${BACKEND_URL}/api/tenant-admin/user/enabled-courses?tenantId=${tenantId}`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error("Failed to fetch courses");
+    }
+
+    const coursesData = await response.json();
+    return coursesData.map((course: CourseData) => ({
+      ...course,
+      properties: {
+        skippable: course.skippable,
+        mandatory: course.mandatory,
+        retryType: course.retryType,
+      },
+    }));
+  },
+
+  async fetchCourseProgress(
+    userId: string,
+    courseId: string,
+    token: string
+  ): Promise<ProgressData> {
+    const response = await fetch(
+      `${BACKEND_URL}/api/courses/progress/user?userId=${userId}&courseId=${courseId}`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    if (!response.ok) {
+      return { progress: 0 };
+    }
+
+    return response.json();
+  },
+
+  async fetchUserCourses(userId: string, token: string): Promise<UserCourse[]> {
+    const response = await fetch(
+      `${BACKEND_URL}/api/user-dashboard/dashboard/${userId}/courses`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error("Failed to fetch user courses");
+    }
+
+    return response.json();
+  },
+
+  async fetchCourseMaterial(
+    courseId: string,
+    tenantId: string
+  ): Promise<{ materialUrl: string }> {
+    const response = await fetch(
+      `${BACKEND_URL}/api/courses/${courseId}/chatbot-material?tenantId=${tenantId}`
+    );
+
+    if (!response.ok) {
+      throw new Error("Failed to fetch course material URL");
+    }
+
+    const data = await response.json();
+    if (!data.materialUrl) {
+      throw new Error("Material URL is empty in the response");
+    }
+
+    return data;
   },
 };

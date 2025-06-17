@@ -8,6 +8,12 @@ export interface Course {
   targetAudience: string[];
   materialUrl: string;
   createdAt: string;
+  properties: {
+    mandatory: boolean;
+    skippable: boolean;
+    retryType: "DIFFERENT" | "SAME";
+    isEnabled?: boolean;
+  };
 }
 
 export interface Tenant {
