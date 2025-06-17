@@ -1,42 +1,12 @@
 import { Slide, Explanation } from "@/types/CoursePlayer";
+import {
+  CourseToggleResponse,
+  UpdateCoursePropertiesPayload,
+  UpdateCoursePropertiesResponse,
+  POC,
+} from "@/types/course";
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
-
-interface CourseToggleResponse {
-  isEnabled: boolean;
-  [key: string]: unknown;
-}
-
-interface CourseProperties {
-  mandatory: boolean;
-  skippable: boolean;
-  retryType: "SAME" | "DIFFERENT";
-  isEnabled?: boolean;
-}
-
-interface POC {
-  id: string;
-  name: string;
-  email: string;
-  role: string;
-  contact: string;
-}
-
-interface UpdateCoursePropertiesPayload {
-  tenantId: string;
-  courseId: string;
-  skippable: boolean;
-  mandatory: boolean;
-  retryType: "SAME" | "DIFFERENT";
-  pocs: Omit<POC, "id">[];
-}
-
-interface UpdateCoursePropertiesResponse {
-  mandatory: boolean;
-  skippable: boolean;
-  retryType: "SAME" | "DIFFERENT";
-  details: POC[];
-}
 
 export const courseService = {
   async fetchSlides(tenantId: string, courseId: string): Promise<Slide[]> {

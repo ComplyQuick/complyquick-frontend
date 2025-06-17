@@ -1,3 +1,5 @@
+import { Course } from "./AddCourseForm";
+
 export interface Slide {
   id: string;
   title: string;
@@ -160,4 +162,43 @@ export interface CourseDetailsModalProps {
   };
   onUpdate?: () => void;
   hideProperties?: boolean;
+}
+
+export interface CourseToggleResponse {
+  isEnabled: boolean;
+  [key: string]: unknown;
+}
+
+export interface UpdateCoursePropertiesPayload {
+  tenantId: string;
+  courseId: string;
+  skippable: boolean;
+  mandatory: boolean;
+  retryType: "SAME" | "DIFFERENT";
+  pocs: Omit<POC, "id">[];
+}
+
+export interface UpdateCoursePropertiesResponse {
+  mandatory: boolean;
+  skippable: boolean;
+  retryType: "SAME" | "DIFFERENT";
+  details: POC[];
+}
+
+export interface CourseDetails {
+  id: string;
+  materialUrl?: string;
+  [key: string]: unknown;
+}
+
+export interface CreateCourseResponse {
+  success: boolean;
+  message: string;
+  course?: Course;
+}
+
+export interface UpdateCourseResponse {
+  success: boolean;
+  message: string;
+  course?: Course;
 }

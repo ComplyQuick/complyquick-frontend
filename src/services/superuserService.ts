@@ -4,37 +4,18 @@ import {
   CourseEnrolledUsers,
   RecentTenant,
 } from "@/types/SuperuserDashboard";
+import { Course as AddCourseFormCourse } from "@/types/AddCourseForm";
+import {
+  CreateOrganizationPayload,
+  CreateOrganizationResponse,
+} from "@/types/SuperuserDashboard";
+import { CreateCourseResponse, UpdateCourseResponse } from "@/types/course";
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
 
 interface RawCourse extends Omit<Course, "learningObjectives" | "tags"> {
   learningObjectives: string;
   tags: string;
-}
-
-export interface CreateCourseResponse {
-  success: boolean;
-  message: string;
-  course?: Course;
-}
-
-export interface UpdateCourseResponse {
-  success: boolean;
-  message: string;
-  course?: Course;
-}
-
-export interface CreateOrganizationPayload {
-  name: string;
-  domain: string;
-  adminEmail: string;
-  adminPassword: string;
-}
-
-export interface CreateOrganizationResponse {
-  success: boolean;
-  message: string;
-  tenant?: Tenant;
 }
 
 export const superuserService = {

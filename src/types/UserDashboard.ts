@@ -20,6 +20,7 @@ export interface UserProfile {
   success: boolean;
   name: string;
   email: string;
+  [key: string]: unknown;
 }
 
 export interface ProgressData {
@@ -33,4 +34,10 @@ export interface UserCourse {
   certificateUrl?: string;
   canRetakeQuiz?: boolean;
   // Add other fields as needed
+}
+
+export interface StoreCertificatePayload {
+  userId: string;
+  courseId: string;
+  certificateUrl: string;
 }

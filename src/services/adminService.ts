@@ -4,7 +4,6 @@ import { Explanation, Slide } from "@/types/course";
 import {
   Course,
   Statistics,
-  Activity,
   TenantDetailsPayload,
   TenantDetailsResponse,
   EnhanceExplanationsPayload,

@@ -1,13 +1,7 @@
-import { Explanation } from "@/types/course";
+import { Explanation, CourseDetails } from "@/types/course";
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
 const AI_SERVICE_URL = import.meta.env.VITE_AI_SERVICE_URL;
-
-interface CourseDetails {
-  id: string;
-  materialUrl?: string;
-  [key: string]: unknown;
-}
 
 export const slideService = {
   async fetchCourseDetails(tenantId: string): Promise<CourseDetails[]> {

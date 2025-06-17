@@ -1,27 +1,17 @@
-import { QuizResult } from "@/types/QuizResults";
 import { MCQ } from "@/types/quiz";
 import { Course } from "@/types/AdminDashboard";
+import {
+  UserProfile,
+  StoreCertificatePayload,
+  CourseData,
+  ProgressData,
+  UserCourse,
+} from "@/types/UserDashboard";
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
 const AI_SERVICE_URL = import.meta.env.VITE_AI_SERVICE_URL;
 
-interface UserProfile {
-  success: boolean;
-  name: string;
-  email: string;
-  [key: string]: unknown;
-}
-
-interface StoreCertificatePayload {
-  userId: string;
-  courseId: string;
-  certificateUrl: string;
-}
-
 export const userService = {
-  /**
-   * Fetch user profile
-   */
   async fetchUserProfile(token: string): Promise<UserProfile> {
     const response = await fetch(`${BACKEND_URL}/api/user-dashboard/profile`, {
       headers: {
@@ -154,7 +144,7 @@ export const userService = {
     );
 
     if (!response.ok) {
-      return { progress: 0 };
+      return { courseId, progress: 0 };
     }
 
     return response.json();

@@ -66,3 +66,16 @@ export interface RecentTenant {
   userCount: number;
   enabledCourseCount: number;
 }
+
+export interface CreateOrganizationPayload {
+  name: string;
+  domain: string;
+  adminEmail: string;
+  adminPassword: string;
+}
+
+export interface CreateOrganizationResponse {
+  success: boolean;
+  message: string;
+  tenant?: Tenant;
+}

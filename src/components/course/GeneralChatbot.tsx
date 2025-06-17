@@ -131,7 +131,7 @@ const GeneralChatbot = ({
     if (tenantId) {
       fetchCourses();
     }
-  }, [tenantId]);
+  }, [tenantId, token]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
