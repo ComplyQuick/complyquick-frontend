@@ -115,7 +115,7 @@ const AddTenantDetailsForm = ({
           </DialogTitle>
           <DialogDescription>
             Configure your organization's contact details and key personnel
-            information.
+            information. Please fill in all the details before proceeding.
           </DialogDescription>
         </DialogHeader>
 

@@ -7,18 +7,19 @@ import {
   ProgressData,
   UserCourse,
 } from "@/types/UserDashboard";
-
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
-const AI_SERVICE_URL = import.meta.env.VITE_AI_SERVICE_URL;
+import { config } from "@/config";
 
 export const userService = {
   async fetchUserProfile(token: string): Promise<UserProfile> {
-    const response = await fetch(`${BACKEND_URL}/api/user-dashboard/profile`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-    });
+    const response = await fetch(
+      `${config.api.baseUrl}${config.api.endpoints.user.profile}`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
 
     if (!response.ok) {
       throw new Error("Failed to fetch user profile");
@@ -29,7 +30,7 @@ export const userService = {
 
   async fetchCourseDetails(tenantId: string, token: string): Promise<Course[]> {
     const response = await fetch(
-      `${BACKEND_URL}/api/tenant-admin/tenants/${tenantId}/courses`,
+      `${config.api.baseUrl}${config.api.endpoints.user.courses.details}/${tenantId}/courses`,
       {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -53,15 +54,18 @@ export const userService = {
     courseId: string,
     tenantId: string
   ): Promise<{ mcqs: MCQ[] }> {
-    const response = await fetch(`${AI_SERVICE_URL}/generate_mcq`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        presentation_url: materialUrl,
-        course_id: courseId,
-        tenant_id: tenantId,
-      }),
-    });
+    const response = await fetch(
+      `${config.api.aiServiceUrl}${config.api.endpoints.user.mcq}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          presentation_url: materialUrl,
+          course_id: courseId,
+          tenant_id: tenantId,
+        }),
+      }
+    );
 
     if (!response.ok) {
       throw new Error("Failed to generate MCQs");
@@ -83,7 +87,7 @@ export const userService = {
     token: string
   ): Promise<void> {
     const response = await fetch(
-      `${BACKEND_URL}/api/user-dashboard/certificates/store`,
+      `${config.api.baseUrl}${config.api.endpoints.user.certificate}`,
       {
         method: "POST",
         headers: {
@@ -104,7 +108,7 @@ export const userService = {
     token: string
   ): Promise<CourseData[]> {
     const response = await fetch(
-      `${BACKEND_URL}/api/tenant-admin/user/enabled-courses?tenantId=${tenantId}`,
+      `${config.api.baseUrl}${config.api.endpoints.user.courses.enabled}?tenantId=${tenantId}`,
       {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -134,7 +138,7 @@ export const userService = {
     token: string
   ): Promise<ProgressData> {
     const response = await fetch(
-      `${BACKEND_URL}/api/courses/progress/user?userId=${userId}&courseId=${courseId}`,
+      `${config.api.baseUrl}${config.api.endpoints.user.courses.progress}?userId=${userId}&courseId=${courseId}`,
       {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -152,7 +156,7 @@ export const userService = {
 
   async fetchUserCourses(userId: string, token: string): Promise<UserCourse[]> {
     const response = await fetch(
-      `${BACKEND_URL}/api/user-dashboard/dashboard/${userId}/courses`,
+      `${config.api.baseUrl}${config.api.endpoints.user.courses.userCourses}/${userId}/courses`,
       {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -172,7 +176,7 @@ export const userService = {
     tenantId: string
   ): Promise<{ materialUrl: string }> {
     const response = await fetch(
-      `${BACKEND_URL}/api/courses/${courseId}/chatbot-material?tenantId=${tenantId}`
+      `${config.api.baseUrl}${config.api.endpoints.user.courses.material}/${courseId}/chatbot-material?tenantId=${tenantId}`
     );
 
     if (!response.ok) {

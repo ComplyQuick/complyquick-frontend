@@ -323,7 +323,7 @@ const AdminDashboard = () => {
             </div>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-4 mb-8">
+          <div className="grid gap-4 md:grid-cols-3 mb-8">
             <Card className="hover:shadow-md transition-all duration-300 transform hover:-translate-y-1 overflow-hidden bg-card/50 backdrop-blur-sm border border-border/50">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">
@@ -356,23 +356,7 @@ const AdminDashboard = () => {
                 </div>
               </CardContent>
             </Card>
-            <Card className="hover:shadow-md transition-all duration-300 transform hover:-translate-y-1 overflow-hidden bg-card/50 backdrop-blur-sm border border-border/50">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  Completion Rate
-                </CardTitle>
-                <CheckCircle className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold animate-fade-in">
-                  {isLoadingStats ? (
-                    <Loader2 className="h-6 w-6 animate-spin" />
-                  ) : (
-                    statistics?.completionRate || "0%"
-                  )}
-                </div>
-              </CardContent>
-            </Card>
+
             <Card className="hover:shadow-md transition-all duration-300 transform hover:-translate-y-1 overflow-hidden bg-card/50 backdrop-blur-sm border border-border/50">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">
@@ -488,25 +472,23 @@ const AdminDashboard = () => {
                   <h3 className="text-lg font-medium mb-0">Courses</h3>
                   <span className="flex items-center gap-2 ml-4">
                     <span
-                      className={`cursor-pointer select-none transition-colors ${
+                      className={`cursor-pointer select-none transition-colors px-4 py-2 rounded-lg ${
                         courseView === "active"
-                          ? "text-gray-900 dark:text-white font-semibold"
-                          : "text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+                          ? "bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-200 font-medium"
+                          : "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
                       }`}
                       onClick={() => setCourseView("active")}
-                      style={{ opacity: courseView === "active" ? 1 : 0.5 }}
                     >
                       Active Courses
                     </span>
                     <span className="mx-2 text-gray-400">|</span>
                     <span
-                      className={`cursor-pointer select-none transition-colors ${
+                      className={`cursor-pointer select-none transition-colors px-4 py-2 rounded-lg ${
                         courseView === "inactive"
-                          ? "text-gray-900 dark:text-white font-semibold"
-                          : "text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+                          ? "bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-200 font-medium"
+                          : "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
                       }`}
                       onClick={() => setCourseView("inactive")}
-                      style={{ opacity: courseView === "inactive" ? 1 : 0.5 }}
                     >
                       Inactive Courses
                     </span>
@@ -578,25 +560,23 @@ const AdminDashboard = () => {
                   <h3 className="text-lg font-medium mb-0">Courses</h3>
                   <span className="flex items-center gap-2 ml-4">
                     <span
-                      className={`cursor-pointer select-none transition-colors ${
+                      className={`cursor-pointer select-none transition-colors px-4 py-2 rounded-lg ${
                         courseView === "active"
-                          ? "text-gray-900 dark:text-white font-semibold"
-                          : "text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+                          ? "bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-200 font-medium"
+                          : "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
                       }`}
                       onClick={() => setCourseView("active")}
-                      style={{ opacity: courseView === "active" ? 1 : 0.5 }}
                     >
                       Active Courses
                     </span>
                     <span className="mx-2 text-gray-400">|</span>
                     <span
-                      className={`cursor-pointer select-none transition-colors ${
+                      className={`cursor-pointer select-none transition-colors px-4 py-2 rounded-lg ${
                         courseView === "inactive"
-                          ? "text-gray-900 dark:text-white font-semibold"
-                          : "text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+                          ? "bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-200 font-medium"
+                          : "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
                       }`}
                       onClick={() => setCourseView("inactive")}
-                      style={{ opacity: courseView === "inactive" ? 1 : 0.5 }}
                     >
                       Inactive Courses
                     </span>

@@ -69,14 +69,15 @@ const CourseCard = ({
   const courseProperties = properties || defaultProperties;
   const isMandatory = courseProperties.mandatory;
 
-  const mandatoryPattern =
-    'url(\'data:image/svg+xml;utf8,<svg width="100" height="100" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><rect width="20" height="20" fill="%23f87171"/><path d="M0 0L20 20M20 0L0 20" stroke="%23fff" stroke-width="1" stroke-opacity="0.08"/></svg>\')';
+  const circlePattern =
+    'url(\'data:image/svg+xml;utf8,<svg width="100" height="100" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><rect width="20" height="20" fill="%23f87171"/><circle cx="10" cy="10" r="2" fill="%23fff" fill-opacity="0.08"/></svg>\')';
   const nonMandatoryPattern =
     'url(\'data:image/svg+xml;utf8,<svg width="100" height="100" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><rect width="20" height="20" fill="%233b82f6"/><circle cx="10" cy="10" r="2" fill="%23fff" fill-opacity="0.08"/></svg>\')';
+
+  const pattern = isMandatory ? circlePattern : nonMandatoryPattern;
   const topBg = isMandatory
     ? "bg-rose-400 dark:bg-rose-600"
     : "bg-blue-400 dark:bg-blue-600";
-  const pattern = isMandatory ? mandatoryPattern : nonMandatoryPattern;
 
   const handleCertificateDownload = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -144,7 +145,7 @@ const CourseCard = ({
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
       >
-        {/* Top colored section with pattern (reduced height for employee) */}
+        {/* Top colored section with pattern */}
         <div
           className={`w-full ${
             userRole === "employee" ? "h-[120px]" : "flex-[4]"
@@ -176,37 +177,6 @@ const CourseCard = ({
             >
               {(courseDetails?.title || title).slice(0, 8)}
             </span>
-            {/* Overlay up to 4 tags at random positions (now for all roles) */}
-            {(() => {
-              let tagList: string[] = [];
-              if (Array.isArray(tags)) {
-                tagList = tags;
-              } else if (typeof tags === "string") {
-                tagList = tags
-                  .split(",")
-                  .map((t) => t.trim())
-                  .filter(Boolean);
-              }
-              const tagPositions = [
-                { top: "18%", left: "12%", rotate: "-8deg" },
-                { top: "60%", left: "20%", rotate: "12deg" },
-                { top: "35%", right: "10%", rotate: "6deg" },
-                { bottom: "12%", left: "40%", rotate: "-14deg" },
-              ];
-              return tagList.slice(0, 4).map((tag, idx) => (
-                <span
-                  key={idx}
-                  className="absolute font-bold text-xs md:text-base lg:text-lg opacity-20 text-white dark:text-white select-none pointer-events-none whitespace-nowrap"
-                  style={{
-                    ...tagPositions[idx],
-                    position: "absolute",
-                    transform: `rotate(${tagPositions[idx].rotate})`,
-                  }}
-                >
-                  {tag}
-                </span>
-              ));
-            })()}
           </span>
         </div>
 
@@ -383,7 +353,7 @@ const CourseCard = ({
               <div className="flex gap-2">
                 {userRole !== "superuser" && (
                   <Button
-                    className="flex-1 rounded-lg  dark:bg-red-600 text-white font-semibold py-2 hover:bg-blue-600 dark:hover:bg-blue-700 transition"
+                    className="flex-1 rounded-lg  bg-red-600 text-white font-semibold py-2 hover:bg-blue-600 dark:hover:bg-blue-700 transition"
                     onClick={(e) => {
                       e.stopPropagation();
                       if (onClick) {
