@@ -44,58 +44,8 @@ import {
   SelectItem,
 } from "@/components/ui/select";
 import { Loader } from "@/components/ui/loader";
-
-interface Course {
-  id: string;
-  courseId: string;
-  title: string;
-  description: string;
-  duration: string;
-  enrolledUsers: number;
-  learningObjectives: string[];
-  mandatory: boolean;
-  skippable: boolean;
-  retryType: "SAME" | "DIFFERENT";
-  tags: string[];
-  targetAudience: string;
-  isEnabled: boolean;
-  pocs?: Array<{
-    id: string;
-    name: string;
-    email: string;
-  }>;
-  // Add other properties as needed
-}
-
-interface User {
-  id: string;
-  name: string;
-  email: string;
-  role: string;
-  coursesCompleted: number;
-  totalCourses: number;
-  lastActivity: string;
-  // Add other properties as needed
-}
-
-interface Statistics {
-  totalUsers: number;
-  totalCourses: number;
-  completionRate: number;
-  trainingStatus: {
-    completed: number;
-    inProgress: number;
-    notStarted: number;
-  };
-}
-
-interface Activity {
-  email: string;
-  name: string;
-  totalCourses: number;
-  status: string;
-  // Add other properties as needed
-}
+import { Course, User, Statistics, Activity } from "@/types/AdminDashboard";
+import { adminService } from "@/services/adminService";
 
 const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState("overview");
@@ -104,14 +54,12 @@ const AdminDashboard = () => {
   const [isAddCourseDialogOpen, setIsAddCourseDialogOpen] = useState(false);
   const [courses, setCourses] = useState<Course[]>([]);
   const [availableCourses, setAvailableCourses] = useState<Course[]>([]);
-  const [selectedCourses, setSelectedCourses] = useState<Course[]>([]);
+  const [selectedCourses, setSelectedCourses] = useState<string[]>([]);
   const [tenantId, setTenantId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [users, setUsers] = useState<User[]>([]);
   const [isLoadingUsers, setIsLoadingUsers] = useState(true);
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
-  const [isGeneratingVideo, setIsGeneratingVideo] = useState(false);
-  const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [statistics, setStatistics] = useState<Statistics | null>(null);
   const [recentActivity, setRecentActivity] = useState<Activity[]>([]);
   const [isLoadingStats, setIsLoadingStats] = useState(true);
@@ -127,7 +75,7 @@ const AdminDashboard = () => {
   );
   const [isAssigningCourse, setIsAssigningCourse] = useState(false);
   const [pocs, setPocs] = useState<
-    { role: string; name: string; contact: string }[]
+    Array<{ role: string; name: string; contact: string }>
   >([{ role: "", name: "", contact: "" }]);
   const [courseView, setCourseView] = useState<"active" | "inactive">("active");
   const [activeCourses, setActiveCourses] = useState<Course[]>([]);
@@ -152,24 +100,8 @@ const AdminDashboard = () => {
             throw new Error("No authentication token found");
           }
 
-          const response = await fetch(
-            `${
-              import.meta.env.VITE_BACKEND_URL
-            }/api/tenant-admin/tenants/${tenantId}/courses`,
-            {
-              headers: {
-                Authorization: `Bearer ${token}`,
-                "Content-Type": "application/json",
-              },
-            }
-          );
-
-          if (!response.ok) {
-            throw new Error("Failed to fetch tenant courses");
-          }
-
-          const data = await response.json();
-          setCourses(data as Course[]);
+          const data = await adminService.fetchTenantCourses(tenantId, token);
+          setCourses(data);
           return data;
         } catch (error) {
           console.error("Error fetching tenant courses:", error);
@@ -182,28 +114,10 @@ const AdminDashboard = () => {
         }
       };
 
-      const fetchAvailableCourses = async (assignedCourses: any[]) => {
+      const fetchAvailableCourses = async (assignedCourses: Course[]) => {
         try {
-          const response = await fetch(
-            `${import.meta.env.VITE_BACKEND_URL}/api/courses`,
-            {
-              method: "GET",
-              headers: {
-                "Content-Type": "application/json",
-              },
-            }
-          );
-
-          if (!response.ok) {
-            throw new Error("Failed to fetch available courses");
-          }
-
-          const data = await response.json();
-          const filteredCourses = data.filter(
-            (course: any) =>
-              !assignedCourses.some(
-                (assignedCourse: any) => assignedCourse.id === course.id
-              )
+          const filteredCourses = await adminService.fetchAvailableCourses(
+            assignedCourses
           );
           setAvailableCourses(filteredCourses);
         } catch (error) {
@@ -226,39 +140,12 @@ const AdminDashboard = () => {
 
       try {
         setIsLoadingStats(true);
-        const response = await fetch(
-          `${
-            import.meta.env.VITE_BACKEND_URL
-          }/api/admin/dashboard/statistics?tenantId=${tenantId}`,
-          {
-            headers: {
-              Authorization: `Bearer ${localStorage.getItem("token")}`,
-              "Content-Type": "application/json",
-            },
-          }
-        );
-
-        if (!response.ok) {
-          if (response.status === 404) {
-            console.warn(
-              "Statistics endpoint not found. Using default values."
-            );
-            setStatistics({
-              totalUsers: 0,
-              totalCourses: 0,
-              completionRate: 0,
-              trainingStatus: {
-                completed: 0,
-                inProgress: 0,
-                notStarted: 0,
-              },
-            });
-            return;
-          }
-          throw new Error("Failed to fetch statistics");
+        const token = localStorage.getItem("token");
+        if (!token) {
+          throw new Error("No authentication token found");
         }
 
-        const data = await response.json();
+        const data = await adminService.fetchStatistics(tenantId, token);
         setStatistics(data);
       } catch (error) {
         console.error("Error fetching statistics:", error);
@@ -282,30 +169,7 @@ const AdminDashboard = () => {
       if (!tenantId) return;
 
       try {
-        const response = await fetch(
-          `${
-            import.meta.env.VITE_BACKEND_URL
-          }/api/admin/dashboard/recent-activity?tenantId=${tenantId}`,
-          {
-            headers: {
-              Authorization: `Bearer ${localStorage.getItem("token")}`,
-              "Content-Type": "application/json",
-            },
-          }
-        );
-
-        if (!response.ok) {
-          if (response.status === 404) {
-            console.warn(
-              "Recent activity endpoint not found. Using empty array."
-            );
-            setRecentActivity([]);
-            return;
-          }
-          throw new Error("Failed to fetch recent activity");
-        }
-
-        const data = await response.json();
+        const data = await adminService.fetchRecentActivity(tenantId);
         setRecentActivity(data);
       } catch (error) {
         console.error("Error fetching recent activity:", error);
@@ -324,17 +188,7 @@ const AdminDashboard = () => {
 
       try {
         setIsLoadingUsers(true);
-        const response = await fetch(
-          `${
-            import.meta.env.VITE_BACKEND_URL
-          }/api/tenant-admin/tenants/${tenantId}/users`
-        );
-
-        if (!response.ok) {
-          throw new Error("Failed to fetch users");
-        }
-
-        const data = await response.json();
+        const data = await adminService.fetchTenantUsers(tenantId);
         setUsers(data);
       } catch (error) {
         console.error("Error fetching users:", error);
@@ -375,16 +229,12 @@ const AdminDashboard = () => {
   const fetchCourses = async () => {
     if (!tenantId) return;
     try {
-      const response = await fetch(
-        `${
-          import.meta.env.VITE_BACKEND_URL
-        }/api/tenant-admin/tenants/${tenantId}/courses`
-      );
-      if (!response.ok) {
-        throw new Error("Failed to fetch courses");
+      const token = localStorage.getItem("token");
+      if (!token) {
+        throw new Error("No authentication token found");
       }
-      const data = await response.json();
-      setCourses(data as Course[]);
+      const data = await adminService.fetchTenantCourses(tenantId, token);
+      setCourses(data);
     } catch (error) {
       console.error("Error fetching courses:", error);
       toast.error("Failed to load courses");
@@ -396,28 +246,22 @@ const AdminDashboard = () => {
 
     setIsAssigningCourse(true);
     try {
-      const response = await fetch(
-        `${import.meta.env.VITE_BACKEND_URL}/api/courses/assign`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
-          },
-          body: JSON.stringify({
-            courseId: assigningCourseId,
-            tenantId: tenantId,
-            skippable: assignSkippable,
-            mandatory: assignMandatory,
-            retryType: assignRetryType,
-            pocs: pocs,
-          }),
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error("Failed to assign course");
+      const token = localStorage.getItem("token");
+      if (!token) {
+        throw new Error("No authentication token found");
       }
+
+      await adminService.assignCourse(
+        {
+          courseId: assigningCourseId,
+          tenantId: tenantId,
+          skippable: assignSkippable,
+          mandatory: assignMandatory,
+          retryType: assignRetryType,
+          pocs: pocs,
+        },
+        token
+      );
 
       toast.success("Course assigned successfully!");
       setShowAssignModal(false);
@@ -431,59 +275,21 @@ const AdminDashboard = () => {
     }
   };
 
-  const handleCourseSelect = async (course: Course) => {
-    setSelectedCourse(course);
-    setAssigningCourseId(course.id);
-    setAssignSkippable(course.skippable);
-    setAssignMandatory(course.mandatory);
-    setAssignRetryType(course.retryType);
-    setPocs([{ role: "", name: "", contact: "" }]);
-    setShowAssignModal(true);
-  };
-
-  const completedCount = users.filter(
-    (user: any) =>
-      user.enrollments?.length > 0 &&
-      user.enrollments.every((enrollment: any) => enrollment.completed)
-  ).length;
-
-  const inProgressCount = users.filter(
-    (user: any) =>
-      user.enrollments?.length > 0 &&
-      user.enrollments.some((enrollment: any) => !enrollment.completed)
-  ).length;
-
-  const notStartedCount = users.filter(
-    (user: any) => !user.enrollments || user.enrollments.length === 0
-  ).length;
-
-  // Fetch active/inactive courses when tenantId or courseView changes
   useEffect(() => {
     if (!tenantId) return;
     const fetchCoursesByStatus = async () => {
       const token = localStorage.getItem("token");
       if (!token) return;
-      const url =
-        courseView === "active"
-          ? `${
-              import.meta.env.VITE_BACKEND_URL
-            }/api/tenant-admin/tenants/${tenantId}/courses/enabled`
-          : `${
-              import.meta.env.VITE_BACKEND_URL
-            }/api/tenant-admin/tenants/${tenantId}/courses/disabled`;
       try {
-        const response = await fetch(url, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        });
-        if (!response.ok) throw new Error("Failed to fetch courses");
-        const data = await response.json();
+        const data = await adminService.fetchCoursesByStatus(
+          tenantId,
+          token,
+          courseView
+        );
         if (courseView === "active") setActiveCourses(data);
         else setInactiveCourses(data);
       } catch (e) {
-        // Optionally handle error
+        console.error("Error fetching courses by status:", e);
       }
     };
     fetchCoursesByStatus();
@@ -517,7 +323,7 @@ const AdminDashboard = () => {
             </div>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-4 mb-8">
+          <div className="grid gap-4 md:grid-cols-3 mb-8">
             <Card className="hover:shadow-md transition-all duration-300 transform hover:-translate-y-1 overflow-hidden bg-card/50 backdrop-blur-sm border border-border/50">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">
@@ -550,23 +356,7 @@ const AdminDashboard = () => {
                 </div>
               </CardContent>
             </Card>
-            <Card className="hover:shadow-md transition-all duration-300 transform hover:-translate-y-1 overflow-hidden bg-card/50 backdrop-blur-sm border border-border/50">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  Completion Rate
-                </CardTitle>
-                <CheckCircle className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold animate-fade-in">
-                  {isLoadingStats ? (
-                    <Loader2 className="h-6 w-6 animate-spin" />
-                  ) : (
-                    statistics?.completionRate || "0%"
-                  )}
-                </div>
-              </CardContent>
-            </Card>
+
             <Card className="hover:shadow-md transition-all duration-300 transform hover:-translate-y-1 overflow-hidden bg-card/50 backdrop-blur-sm border border-border/50">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">
@@ -682,25 +472,23 @@ const AdminDashboard = () => {
                   <h3 className="text-lg font-medium mb-0">Courses</h3>
                   <span className="flex items-center gap-2 ml-4">
                     <span
-                      className={`cursor-pointer select-none transition-colors ${
+                      className={`cursor-pointer select-none transition-colors px-4 py-2 rounded-lg ${
                         courseView === "active"
-                          ? "text-gray-900 dark:text-white font-semibold"
-                          : "text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+                          ? "bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-200 font-medium"
+                          : "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
                       }`}
                       onClick={() => setCourseView("active")}
-                      style={{ opacity: courseView === "active" ? 1 : 0.5 }}
                     >
                       Active Courses
                     </span>
                     <span className="mx-2 text-gray-400">|</span>
                     <span
-                      className={`cursor-pointer select-none transition-colors ${
+                      className={`cursor-pointer select-none transition-colors px-4 py-2 rounded-lg ${
                         courseView === "inactive"
-                          ? "text-gray-900 dark:text-white font-semibold"
-                          : "text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+                          ? "bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-200 font-medium"
+                          : "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
                       }`}
                       onClick={() => setCourseView("inactive")}
-                      style={{ opacity: courseView === "inactive" ? 1 : 0.5 }}
                     >
                       Inactive Courses
                     </span>
@@ -724,12 +512,16 @@ const AdminDashboard = () => {
                     courseId={item.courseId}
                     title={item.title}
                     description={item.description}
-                    duration={item.duration || ""}
+                    duration={item.duration}
                     enrolledUsers={item.enrolledUsers}
                     userRole="admin"
                     tenantId={tenantId || ""}
                     token={localStorage.getItem("token") || ""}
-                    learningObjectives={item.learningObjectives || ""}
+                    learningObjectives={
+                      Array.isArray(item.learningObjectives)
+                        ? item.learningObjectives.join(", ")
+                        : item.learningObjectives
+                    }
                     properties={{
                       mandatory: item.mandatory,
                       skippable: item.skippable,
@@ -740,7 +532,9 @@ const AdminDashboard = () => {
                       id: item.id,
                       title: item.title,
                       description: item.description,
-                      learningObjectives: item.learningObjectives || "",
+                      learningObjectives: Array.isArray(item.learningObjectives)
+                        ? item.learningObjectives.join(", ")
+                        : item.learningObjectives,
                       properties: {
                         mandatory: item.mandatory,
                         skippable: item.skippable,
@@ -766,25 +560,23 @@ const AdminDashboard = () => {
                   <h3 className="text-lg font-medium mb-0">Courses</h3>
                   <span className="flex items-center gap-2 ml-4">
                     <span
-                      className={`cursor-pointer select-none transition-colors ${
+                      className={`cursor-pointer select-none transition-colors px-4 py-2 rounded-lg ${
                         courseView === "active"
-                          ? "text-gray-900 dark:text-white font-semibold"
-                          : "text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+                          ? "bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-200 font-medium"
+                          : "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
                       }`}
                       onClick={() => setCourseView("active")}
-                      style={{ opacity: courseView === "active" ? 1 : 0.5 }}
                     >
                       Active Courses
                     </span>
                     <span className="mx-2 text-gray-400">|</span>
                     <span
-                      className={`cursor-pointer select-none transition-colors ${
+                      className={`cursor-pointer select-none transition-colors px-4 py-2 rounded-lg ${
                         courseView === "inactive"
-                          ? "text-gray-900 dark:text-white font-semibold"
-                          : "text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+                          ? "bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-200 font-medium"
+                          : "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
                       }`}
                       onClick={() => setCourseView("inactive")}
-                      style={{ opacity: courseView === "inactive" ? 1 : 0.5 }}
                     >
                       Inactive Courses
                     </span>
@@ -802,12 +594,16 @@ const AdminDashboard = () => {
                     courseId={item.courseId}
                     title={item.title}
                     description={item.description}
-                    duration={item.duration || ""}
+                    duration={item.duration}
                     enrolledUsers={item.enrolledUsers}
                     userRole="admin"
                     tenantId={tenantId || ""}
                     token={localStorage.getItem("token") || ""}
-                    learningObjectives={item.learningObjectives || ""}
+                    learningObjectives={
+                      Array.isArray(item.learningObjectives)
+                        ? item.learningObjectives.join(", ")
+                        : item.learningObjectives
+                    }
                     properties={{
                       mandatory: item.mandatory,
                       skippable: item.skippable,
@@ -818,7 +614,9 @@ const AdminDashboard = () => {
                       id: item.id,
                       title: item.title,
                       description: item.description,
-                      learningObjectives: item.learningObjectives || "",
+                      learningObjectives: Array.isArray(item.learningObjectives)
+                        ? item.learningObjectives.join(", ")
+                        : item.learningObjectives,
                       properties: {
                         mandatory: item.mandatory,
                         skippable: item.skippable,

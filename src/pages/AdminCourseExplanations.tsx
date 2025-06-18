@@ -1,18 +1,12 @@
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Loader2, ArrowLeft, Wand2 } from "lucide-react";
 import { toast } from "sonner";
-
-interface Explanation {
-  slide: number;
-  content: string;
-  explanation: string;
-  explanation_audio?: string;
-  explanation_subtitle?: string;
-}
+import { Explanation } from "@/types/course";
+import { adminService } from "@/services/adminService";
 
 const AdminCourseExplanations = () => {
   const { courseId } = useParams<{ courseId: string }>();
@@ -21,72 +15,65 @@ const AdminCourseExplanations = () => {
   const token = searchParams.get("token") || "";
 
   const [explanations, setExplanations] = useState<Explanation[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [prompt, setPrompt] = useState("");
-  const [isEnhancing, setIsEnhancing] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [queryPrompt, setQueryPrompt] = useState("");
+  const [batchSize, setBatchSize] = useState(5);
+  const [enhancing, setEnhancing] = useState(false);
 
   useEffect(() => {
+    if (!courseId || !tenantId || !token) {
+      toast.error("Missing required parameters");
+      return;
+    }
+
     const fetchExplanations = async () => {
-      setIsLoading(true);
       try {
-        const response = await fetch(
-          `${
-            import.meta.env.VITE_BACKEND_URL
-          }/api/courses/${courseId}/explanations?tenantId=${tenantId}`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-              "Content-Type": "application/json",
-            },
-          }
+        const data = await adminService.fetchCourseExplanations(
+          courseId,
+          tenantId,
+          token
         );
-        if (!response.ok) throw new Error("Failed to fetch explanations");
-        const data = await response.json();
-        setExplanations(data.explanations || []);
+        setExplanations(data.explanations);
       } catch (error) {
-        toast.error("Failed to load explanations");
+        toast.error("Failed to fetch explanations");
+        console.error("Error fetching explanations:", error);
       } finally {
-        setIsLoading(false);
+        setLoading(false);
       }
     };
-    if (courseId && tenantId) fetchExplanations();
+
+    fetchExplanations();
   }, [courseId, tenantId, token]);
 
   const handleEnhance = async () => {
-    if (!prompt.trim()) {
-      toast.error("Please enter a prompt");
+    if (!courseId || !tenantId || !token) {
+      toast.error("Missing required parameters");
       return;
     }
-    setIsEnhancing(true);
+
+    setEnhancing(true);
     try {
-      const response = await fetch(
-        `${
-          import.meta.env.VITE_BACKEND_URL
-        }/api/courses/regenerate-explanations`,
+      const response = await adminService.enhanceExplanations(
         {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            tenantId,
-            courseId,
-            queryPrompt: prompt,
-            batchSize: 5,
-          }),
-        }
+          tenantId,
+          courseId,
+          queryPrompt,
+          batchSize,
+        },
+        token
       );
-      if (!response.ok) throw new Error("Failed to enhance explanations");
-      const data = await response.json();
-      setExplanations(data.explanations || []);
-      toast.success("Explanations enhanced successfully!");
-      setPrompt("");
+
+      if (response.success) {
+        setExplanations(response.explanations);
+        toast.success("Explanations enhanced successfully");
+      } else {
+        toast.error(response.message || "Failed to enhance explanations");
+      }
     } catch (error) {
-      console.error("Error enhancing explanations:", error);
       toast.error("Failed to enhance explanations");
+      console.error("Error enhancing explanations:", error);
     } finally {
-      setIsEnhancing(false);
+      setEnhancing(false);
     }
   };
 
@@ -111,7 +98,7 @@ const AdminCourseExplanations = () => {
           </div>
         </CardHeader>
         <CardContent className="p-6">
-          {isLoading ? (
+          {loading ? (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="h-8 w-8 animate-spin text-complybrand-600" />
             </div>
@@ -157,18 +144,18 @@ const AdminCourseExplanations = () => {
             <h3 className="text-lg font-medium mb-4">Enhance Content</h3>
             <Textarea
               placeholder="Suggest how to enhance the content for all slides..."
-              value={prompt}
-              onChange={(e) => setPrompt(e.target.value)}
+              value={queryPrompt}
+              onChange={(e) => setQueryPrompt(e.target.value)}
               className="min-h-[100px] max-h-[200px] overflow-y-auto resize-none mb-4"
-              disabled={isEnhancing}
+              disabled={enhancing}
             />
             <div className="flex justify-end">
               <Button
                 onClick={handleEnhance}
-                disabled={isEnhancing || !prompt.trim()}
+                disabled={enhancing || !queryPrompt.trim()}
                 className="bg-complybrand-600 hover:bg-complybrand-700 text-white px-6"
               >
-                {isEnhancing ? (
+                {enhancing ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     Enhancing...

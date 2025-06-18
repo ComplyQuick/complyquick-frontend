@@ -1,16 +1,8 @@
+import React from "react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { CheckCircle } from "lucide-react";
-
-interface SlideNavigationProps {
-  totalSlides: number;
-  currentSlide: number;
-  onSlideSelect: (index: number) => void;
-  slideExplanations: { content: string }[];
-  progress: number;
-  maxVisitedSlide: number;
-  isAdminView?: boolean;
-}
+import { SlideNavigationProps } from "@/types/course";
 
 const SlideNavigation = ({
   totalSlides,
@@ -24,23 +16,8 @@ const SlideNavigation = ({
   const isSlideCompleted = (index: number) => index < currentSlide;
   const isSlideAccessible = (index: number) => {
     if (isAdminView) return true;
-    if (index <= maxVisitedSlide) {
-      console.log(
-        "[SlideNavigation] Slide",
-        index + 1,
-        "is accessible (<= maxVisitedSlide)",
-        maxVisitedSlide
-      );
-      return true;
-    }
-    if (progress >= 80) {
-      console.log(
-        "[SlideNavigation] Slide",
-        index + 1,
-        "is accessible (progress >= 80%)"
-      );
-      return true;
-    }
+    if (index <= maxVisitedSlide) return true;
+    if (progress >= 80) return true;
     return false;
   };
 
@@ -69,12 +46,6 @@ const SlideNavigation = ({
                   ${!accessible ? "opacity-50 cursor-not-allowed" : ""}
                 `}
                 onClick={() => {
-                  console.log(
-                    "[SlideNavigation] Attempting to select slide",
-                    index + 1,
-                    "accessible:",
-                    accessible
-                  );
                   if (accessible) onSlideSelect(index);
                 }}
               >

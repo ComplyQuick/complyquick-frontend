@@ -29,13 +29,6 @@ const Login = () => {
         password: password.trim(),
       };
 
-      console.log(
-        "Request URL:",
-        `${import.meta.env.VITE_BACKEND_URL}/api/auth/login`
-      );
-      console.log("Request Body:", JSON.stringify(requestBody, null, 2));
-      console.log("Request Body Length:", JSON.stringify(requestBody).length);
-
       const response = await fetch(
         `${import.meta.env.VITE_BACKEND_URL}/api/auth/login`,
         {
@@ -49,14 +42,7 @@ const Login = () => {
         }
       );
 
-      console.log("Response Status:", response.status);
-      console.log(
-        "Response Headers:",
-        Object.fromEntries(response.headers.entries())
-      );
-
       const responseData = await response.json();
-      console.log("Full Response:", responseData);
 
       if (!response.ok) {
         if (response.status === 401) {
@@ -81,7 +67,6 @@ const Login = () => {
 
       // Decode the token to get user role and tenantId
       const tokenPayload = JSON.parse(atob(responseData.token.split(".")[1]));
-      console.log("Decoded Token:", tokenPayload);
 
       // Store tenantId if present
       if (tokenPayload.tenantId) {
@@ -96,7 +81,6 @@ const Login = () => {
         throw new Error("Access denied. Super admin access required.");
       }
     } catch (error) {
-      console.error("Login error:", error);
       toast.error(error instanceof Error ? error.message : "Login failed");
       // Clear password field on error
       setPassword("");

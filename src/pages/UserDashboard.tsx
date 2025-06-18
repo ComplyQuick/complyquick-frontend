@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { Link, useSearchParams, useNavigate } from "react-router-dom";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
@@ -34,42 +34,19 @@ import {
 } from "@/components/ui/select";
 import { Loader } from "@/components/ui/loader";
 import { useAuthStore } from "@/store/authStore";
+import {
+  CourseData,
+  UserProfile,
+  ProgressData,
+  UserCourse,
+} from "@/types/UserDashboard";
+import { userService } from "@/services/userService";
 
-interface CourseData {
-  id: string;
-  courseId?: string;
-  title: string;
-  description: string;
-  duration: string;
-  skippable: boolean;
-  mandatory: boolean;
-  retryType: "DIFFERENT" | "SAME";
-  enrolledUsers: number;
-  properties?: {
-    skippable: boolean;
-    mandatory: boolean;
-    retryType: "DIFFERENT" | "SAME";
-  };
-  tags?: string[];
-}
-
-interface UserProfile {
-  success: boolean;
-  name: string;
-  email: string;
-}
-
-interface ProgressData {
-  courseId: string;
-  progress: number;
-}
-
-interface UserCourse {
-  courseId: string;
-  canDownloadCertificate?: boolean;
-  certificateUrl?: string;
-  canRetakeQuiz?: boolean;
-  // Add other fields as needed
+interface JWTPayload {
+  sub?: string;
+  id?: string;
+  userId?: string;
+  [key: string]: unknown;
 }
 
 const UserDashboard = () => {
@@ -94,7 +71,6 @@ const UserDashboard = () => {
   useEffect(() => {
     if (tenantId) {
       localStorage.setItem("tenantId", tenantId);
-      console.log("Stored tenantId in localStorage:", tenantId);
     }
     // Remove currentQuiz from localStorage when dashboard loads
     localStorage.removeItem("currentQuiz");
@@ -111,107 +87,39 @@ const UserDashboard = () => {
       try {
         // Decode JWT to get user ID
         const decodedToken = decodeJWT(token);
-        console.log("Decoded token:", decodedToken);
-
-        // Try different possible fields for user ID
         const userId =
           decodedToken?.sub || decodedToken?.userId || decodedToken?.id;
         if (!userId) {
-          console.error("Token structure:", decodedToken);
           throw new Error("User ID not found in token");
         }
 
-        // Fetch user profile
-        const profileResponse = await fetch(
-          `${import.meta.env.VITE_BACKEND_URL}/api/user-dashboard/profile`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-              "Content-Type": "application/json",
-            },
-          }
-        );
+        // Fetch user profile and courses in parallel
+        const [profileData, coursesData] = await Promise.all([
+          userService.fetchUserProfile(token),
+          userService.fetchEnabledCourses(tenantId, token),
+        ]);
 
-        if (!profileResponse.ok) {
-          throw new Error("Failed to fetch user profile");
-        }
-
-        const profileData = await profileResponse.json();
         setUserProfile(profileData);
         if (profileData?.name) {
           localStorage.setItem("userName", profileData.name);
         }
 
-        // Fetch courses
-        const coursesResponse = await fetch(
-          `${
-            import.meta.env.VITE_BACKEND_URL
-          }/api/tenant-admin/user/enabled-courses?tenantId=${tenantId}`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-              "Content-Type": "application/json",
-            },
-          }
-        );
-
-        if (!coursesResponse.ok) {
-          throw new Error("Failed to fetch courses");
-        }
-
-        console.log("Courses response:", coursesResponse);
-
-        const coursesData = await coursesResponse.json();
-        // Map top-level fields into a properties object for UI compatibility
-        const mappedCourses = coursesData.map((course: CourseData) => ({
-          ...course,
-          properties: {
-            skippable: course.skippable,
-            mandatory: course.mandatory,
-            retryType: course.retryType,
-          },
-        }));
-        setCourses(mappedCourses);
+        setCourses(coursesData);
 
         // Fetch progress for each course
-        const progressPromises = mappedCourses.map(
-          async (course: CourseData) => {
-            const progressResponse = await fetch(
-              `${
-                import.meta.env.VITE_BACKEND_URL
-              }/api/courses/progress/user?userId=${userId}&courseId=${
-                course.id
-              }`,
-              {
-                headers: {
-                  Authorization: `Bearer ${token}`,
-                  "Content-Type": "application/json",
-                },
-              }
-            );
-
-            if (!progressResponse.ok) {
-              return { courseId: course.id, progress: 0 };
-            }
-
-            const progressData: ProgressData = await progressResponse.json();
-            return {
-              courseId: course.id,
-              progress: progressData.progress || 0,
-            };
-          }
+        const progressPromises = coursesData.map((course) =>
+          userService.fetchCourseProgress(userId, course.id, token)
         );
 
         const progressResults = await Promise.all(progressPromises);
-        const progressMap = progressResults.reduce((acc, curr) => {
-          acc[curr.courseId] = curr.progress;
+        const progressMap = progressResults.reduce((acc, curr, index) => {
+          acc[coursesData[index].id] = curr.progress || 0;
           return acc;
         }, {} as Record<string, number>);
 
         setCourseProgress(progressMap);
         setIsLoading(false);
       } catch (error: unknown) {
-        console.error("Error fetching data:", error);
         toast.error("Failed to load data");
         setIsLoading(false);
       }
@@ -225,7 +133,7 @@ const UserDashboard = () => {
     let decodedUserId = "";
     if (token) {
       try {
-        const decoded: Record<string, any> = jwtDecode(token);
+        const decoded: JWTPayload = jwtDecode(token);
         decodedUserId = decoded.sub || decoded.id || decoded.userId || "";
         setUserId(decodedUserId);
       } catch (e: unknown) {
@@ -233,26 +141,16 @@ const UserDashboard = () => {
       }
     }
     if (decodedUserId) {
-      fetch(
-        `${
-          import.meta.env.VITE_BACKEND_URL
-        }/api/user-dashboard/dashboard/${decodedUserId}/courses`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      )
-        .then((res) => res.json())
+      userService
+        .fetchUserCourses(decodedUserId, token)
         .then((data) => {
-          console.log("User dashboard courses API response:", data);
           setUserCourses(data);
         })
         .catch((err) => {
           console.error("Failed to fetch user courses:", err);
         });
     }
-  }, []);
+  }, [token]);
 
   // Calculate overall progress and completed courses
   const totalProgress = Object.values(courseProgress).reduce(
@@ -306,9 +204,7 @@ const UserDashboard = () => {
       : 0;
 
   const handleCourseSelect = (courseId: string) => {
-    console.log("Selected course ID:", courseId);
     const course = courses.find((c) => c.id === courseId);
-    console.log("Selected course:", course);
 
     if (course) {
       const defaultProperties = {
@@ -318,10 +214,6 @@ const UserDashboard = () => {
       };
 
       const courseProperties = course.properties || defaultProperties;
-      console.log(
-        "Course properties being passed to player:",
-        courseProperties
-      );
 
       navigate(
         `/dashboard/course/${courseId}/play?tenantId=${tenantId}&token=${token}&progress=${
@@ -591,13 +483,6 @@ const UserDashboard = () => {
                     const certificateUrl = userCourse?.certificateUrl;
                     const canRetakeQuiz = userCourse?.canRetakeQuiz;
 
-                    // Log properties passed to CourseCard
-                    console.log(
-                      "Rendering CourseCard for course:",
-                      course.title,
-                      course.properties
-                    );
-
                     return (
                       <div key={course.id} className="relative">
                         <CourseCard
@@ -633,30 +518,12 @@ const UserDashboard = () => {
                                     let s3Url;
 
                                     if (!storedMaterialUrl) {
-                                      const materialResponse = await fetch(
-                                        `${
-                                          import.meta.env.VITE_BACKEND_URL
-                                        }/api/courses/${
-                                          course.id
-                                        }/chatbot-material?tenantId=${tenantId}`
-                                      );
-
-                                      if (!materialResponse.ok) {
-                                        throw new Error(
-                                          "Failed to fetch course material URL"
-                                        );
-                                      }
-
                                       const materialData =
-                                        await materialResponse.json();
-                                      s3Url = materialData.materialUrl;
-
-                                      if (!s3Url) {
-                                        throw new Error(
-                                          "Material URL is empty in the response"
+                                        await userService.fetchCourseMaterial(
+                                          course.id,
+                                          tenantId
                                         );
-                                      }
-
+                                      s3Url = materialData.materialUrl;
                                       localStorage.setItem(
                                         `course_material_${course.id}`,
                                         s3Url
@@ -666,39 +533,12 @@ const UserDashboard = () => {
                                     }
 
                                     // Generate MCQs
-                                    const mcqResponse = await fetch(
-                                      `${
-                                        import.meta.env.VITE_AI_SERVICE_URL
-                                      }/generate_mcq`,
-                                      {
-                                        method: "POST",
-                                        headers: {
-                                          "Content-Type": "application/json",
-                                        },
-                                        body: JSON.stringify({
-                                          presentation_url: s3Url,
-                                          course_id: course.id,
-                                          tenant_id: tenantId,
-                                        }),
-                                      }
-                                    );
-
-                                    if (!mcqResponse.ok) {
-                                      throw new Error(
-                                        "Failed to generate MCQs"
+                                    const mcqData =
+                                      await userService.generateMCQs(
+                                        s3Url,
+                                        course.id,
+                                        tenantId
                                       );
-                                    }
-
-                                    const mcqData = await mcqResponse.json();
-
-                                    if (
-                                      !mcqData.mcqs ||
-                                      !Array.isArray(mcqData.mcqs)
-                                    ) {
-                                      throw new Error(
-                                        "Invalid MCQ data received"
-                                      );
-                                    }
 
                                     // Store MCQ data and navigate to quiz
                                     localStorage.setItem(

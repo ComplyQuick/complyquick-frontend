@@ -13,28 +13,14 @@ import { ArrowLeft, Check, X, RotateCcw, Wand2 } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Loader2 } from "lucide-react";
-
-interface Slide {
-  id: string;
-  title: string;
-  content: string;
-  completed: boolean;
-}
-
-interface Explanation {
-  slide: number;
-  content: string;
-  explanation: string;
-  explanation_audio: string;
-}
+import { Slide, Explanation } from "@/types/course";
+import { adminService } from "@/services/adminService";
 
 const AdminCoursePlayer = () => {
   const { courseId } = useParams<{ courseId: string }>();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const location = useLocation();
-
-  // Get parameters from URL
   const urlTenantId = searchParams.get("tenantId");
   const urlToken = searchParams.get("token");
 
@@ -85,27 +71,12 @@ const AdminCoursePlayer = () => {
       }
 
       try {
-        // Fetch explanations array
-        const response = await fetch(
-          `${
-            import.meta.env.VITE_BACKEND_URL
-          }/api/courses/${courseId}/explanations?tenantId=${urlTenantId}`,
-          {
-            headers: {
-              Authorization: `Bearer ${urlToken}`,
-              "Content-Type": "application/json",
-            },
-          }
+        const data = await adminService.fetchCourseExplanations(
+          courseId,
+          urlTenantId,
+          urlToken
         );
 
-        if (!response.ok) {
-          throw new Error("Failed to fetch explanations");
-        }
-
-        const data = await response.json();
-        console.log("[AdminCoursePlayer] Explanations response:", data);
-
-        // The response is an object with an explanations array
         const explanations = data.explanations || [];
 
         if (!Array.isArray(explanations)) {
@@ -116,14 +87,13 @@ const AdminCoursePlayer = () => {
         setInitialExplanations(explanations);
 
         // Convert explanations to slides format
-        const slidesData = explanations.map(
-          (explanation: any, index: number) => ({
-            id: `slide-${index + 1}`,
-            title: `Slide ${index + 1}`,
-            content: explanation.content || explanation,
-            completed: false,
-          })
-        );
+        const slidesData = explanations.map((explanation, index) => ({
+          id: `slide-${index + 1}`,
+          title: `Slide ${index + 1}`,
+          content:
+            typeof explanation === "string" ? explanation : explanation.content,
+          completed: false,
+        }));
 
         setSlides(slidesData);
         setCurrentSlideIndex(0);
@@ -161,7 +131,6 @@ const AdminCoursePlayer = () => {
 
     setIsGeneratingExplanation(true);
     try {
-      // Store the current explanation in history before updating
       if (courseId) {
         pushToHistory(
           courseId,
@@ -169,32 +138,13 @@ const AdminCoursePlayer = () => {
           explanations[currentSlideIndex]?.explanation || ""
         );
       }
-      // Prepare the request body as required by the AI service
-      const aiServiceUrl =
-        import.meta.env.VITE_AI_SERVICE_URL + "/enhance-slide";
-      const requestBody = {
-        explanation_array: explanations.map((exp) => ({
-          content: exp.content,
-          explanation: exp.explanation,
-          slide: exp.slide,
-        })),
-        query_index: currentSlideIndex,
-        query_prompt: prompt,
-      };
 
-      const response = await fetch(aiServiceUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(requestBody),
-      });
+      const data = await adminService.generateExplanation(
+        explanations,
+        currentSlideIndex,
+        prompt
+      );
 
-      if (!response.ok) {
-        throw new Error("Failed to generate explanation");
-      }
-
-      const data = await response.json();
       if (!data.explanation_array || !Array.isArray(data.explanation_array)) {
         throw new Error("Invalid response from AI service");
       }
@@ -231,12 +181,9 @@ const AdminCoursePlayer = () => {
     setIsClearing(true);
     setTimeout(() => setIsClearing(false), 400);
     if (!courseId) return;
-    // Get the initial explanation for this slide
     const initial = initialExplanations[currentSlideIndex]?.explanation || "";
-    // Clear session storage for this slide
     const key = getHistoryKey(courseId, currentSlideIndex);
     sessionStorage.removeItem(key);
-    // Set the explanation back to the initial one
     setExplanations((prevExps) =>
       prevExps.map((exp, idx) =>
         idx === currentSlideIndex ? { ...exp, explanation: initial } : exp
@@ -253,28 +200,16 @@ const AdminCoursePlayer = () => {
 
     setIsApproving(true);
     try {
-      const response = await fetch(
-        `${import.meta.env.VITE_BACKEND_URL}/api/courses/update-explanation`,
+      const response = await adminService.updateExplanation(
         {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${urlToken}`,
-          },
-          body: JSON.stringify({
-            courseId,
-            tenantId: urlTenantId,
-            slideIndex: currentSlideIndex + 1,
-            explanation: explanations[currentSlideIndex]?.explanation || "",
-          }),
-        }
+          courseId,
+          tenantId: urlTenantId,
+          slideIndex: currentSlideIndex + 1,
+          explanation: explanations[currentSlideIndex]?.explanation || "",
+        },
+        urlToken
       );
 
-      if (!response.ok) {
-        throw new Error("Failed to update explanation");
-      }
-
-      const data = await response.json();
       toast.success("Explanation approved and saved successfully!");
 
       // Update the explanations array with the response data
@@ -283,8 +218,8 @@ const AdminCoursePlayer = () => {
           idx === currentSlideIndex
             ? {
                 ...exp,
-                explanation: data.slide.explanation,
-                explanation_audio: data.slide.explanation_audio,
+                explanation: response.slide.explanation,
+                explanation_audio: response.slide.explanation_audio,
               }
             : exp
         )
@@ -299,7 +234,7 @@ const AdminCoursePlayer = () => {
 
   // Dismissible toast helper
   const showDismissibleToast = (message: string) => {
-    let toastId: number | undefined = undefined;
+    let toastId: string | number | undefined = undefined;
     toastId = toast(message, {
       action: {
         label: "Clear",

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import { Button } from "@/components/ui/button";
@@ -19,88 +19,18 @@ import {
   Trash2,
   Pencil,
 } from "lucide-react";
-import UsersList from "@/components/dashboard/UsersList";
 import CourseCard from "@/components/dashboard/CourseCard";
 import AddOrganizationForm from "@/components/forms/AddOrganizationForm";
 import AddCourseForm from "@/components/forms/AddCourseForm";
 import { toast } from "sonner";
 import { Menu } from "@headlessui/react";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
-
-interface Course {
-  id: string;
-  title: string;
-  description: string;
-  duration: number;
-  tags: string[];
-  learningObjectives: string[];
-  targetAudience: string[];
-  materialUrl: string;
-  createdAt: string;
-}
-
-interface Tenant {
-  id: string;
-  name: string;
-  domain: string;
-  adminEmail: string;
-  details?: {
-    presidingOfficerEmail?: string;
-    poshCommitteeEmail?: string;
-    hrContactName?: string;
-    hrContactEmail?: string;
-    hrContactPhone?: string;
-    ceoName?: string;
-    ceoEmail?: string;
-    ceoContact?: string;
-    ctoName?: string;
-    ctoEmail?: string;
-    ctoContact?: string;
-    ccoEmail?: string;
-    ccoContact?: string;
-    croName?: string;
-    croEmail?: string;
-    croContact?: string;
-    legalOfficerName?: string;
-    legalOfficerEmail?: string;
-    legalOfficerContact?: string;
-  };
-  users?: {
-    id: string;
-    name: string;
-    email: string;
-    role: string;
-  }[];
-  courses?: {
-    id: string;
-    title: string;
-  }[];
-}
-
-interface User {
-  id: string;
-  name: string;
-  email: string;
-  department: string;
-  coursesCompleted: number;
-  totalCourses: number;
-  lastActivity: string;
-  role?: string;
-  status?: string;
-}
-
-interface CourseEnrolledUsers {
-  courseId: string;
-  totalEnrolledUsers: number;
-}
-
-interface RecentTenant {
-  id: string;
-  name: string;
-  domain: string;
-  userCount: number;
-  enabledCourseCount: number;
-}
+import {
+  Course,
+  Tenant,
+  CourseEnrolledUsers,
+  RecentTenant,
+} from "@/types/SuperuserDashboard";
+import { superuserService } from "@/services/superuserService";
 
 const SuperUserDashboard = () => {
   const [activeTab, setActiveTab] = useState("overview");
@@ -112,7 +42,6 @@ const SuperUserDashboard = () => {
   const [error, setError] = useState<string | null>(null);
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
   const [showCourseActions, setShowCourseActions] = useState(false);
-  const [showUpdateModal, setShowUpdateModal] = useState(false);
   const [updateCourse, setUpdateCourse] = useState<Course | null>(null);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [enrolledUsersData, setEnrolledUsersData] = useState<
@@ -125,41 +54,14 @@ const SuperUserDashboard = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Fetch courses
-        const coursesResponse = await fetch(
-          `${import.meta.env.VITE_BACKEND_URL}/api/courses`
-        );
-        if (!coursesResponse.ok) {
-          throw new Error("Failed to fetch courses");
-        }
-        const coursesData = await coursesResponse.json();
-        // Transform the data to convert learningObjectives and tags to arrays
-        const transformedData = coursesData.map((course: any) => ({
-          ...course,
-          learningObjectives: course.learningObjectives
-            ? course.learningObjectives
-                .split(",")
-                .map((obj: string) => obj.trim())
-            : [],
-          tags: course.tags
-            ? course.tags.split(",").map((tag: string) => tag.trim())
-            : [],
-        }));
-        setCourses(transformedData);
-
-        // Fetch tenants
-        const tenantsResponse = await fetch(
-          `${import.meta.env.VITE_BACKEND_URL}/api/tenants`
-        );
-        if (!tenantsResponse.ok) {
-          throw new Error("Failed to fetch tenants");
-        }
-        const tenantsData = await tenantsResponse.json();
+        const [coursesData, tenantsData] = await Promise.all([
+          superuserService.getCourses(),
+          superuserService.getTenants(),
+        ]);
+        setCourses(coursesData);
         setTenants(tenantsData);
-
         setIsLoading(false);
       } catch (error) {
-        console.error("Error fetching data:", error);
         setError("Failed to load data");
         toast.error("Failed to load data. Please try again later.");
         setIsLoading(false);
@@ -170,14 +72,9 @@ const SuperUserDashboard = () => {
   }, []);
 
   useEffect(() => {
-    // Fetch enrolled users count for all courses
     const fetchEnrolledUsers = async () => {
       try {
-        const response = await fetch(
-          `${backendUrl}/api/superadmin/courses/enrolled-users`
-        );
-        if (!response.ok) throw new Error("Failed to fetch enrolled users");
-        const data = await response.json();
+        const data = await superuserService.getEnrolledUsers();
         setEnrolledUsersData(data);
       } catch (e) {
         // Optionally handle error
@@ -187,54 +84,22 @@ const SuperUserDashboard = () => {
   }, []);
 
   useEffect(() => {
-    // Fetch recent tenants with course counts
     const fetchRecentTenants = async () => {
       try {
-        const response = await fetch(
-          `${backendUrl}/api/superadmin/tenants/recent`
-        );
-        if (!response.ok) throw new Error("Failed to fetch recent tenants");
-        const data = await response.json();
+        const data = await superuserService.getRecentTenants();
         setRecentTenants(data);
       } catch (e) {
         // Optionally handle error
       }
     };
     fetchRecentTenants();
-  }, [backendUrl]);
+  }, []);
 
   const handleCourseCreated = () => {
-    // Refresh courses after a new one is created
     const fetchCourses = async () => {
       try {
-        const response = await fetch(
-          `${import.meta.env.VITE_BACKEND_URL}/api/courses`
-        );
-        if (!response.ok) {
-          throw new Error("Failed to fetch courses");
-        }
-        const data = await response.json();
-        // Transform the data to convert learningObjectives and tags to arrays
-        const transformedData = data.map((course: any) => {
-          const learningObjectivesArr = course.learningObjectives
-            ? course.learningObjectives
-                .split(",")
-                .map((obj: string) => obj.trim())
-            : [];
-          const tagsArr = course.tags
-            ? course.tags.split(",").map((tag: string) => tag.trim())
-            : [];
-          console.log(`Course: ${course.title}`, {
-            learningObjectivesArr,
-            tagsArr,
-          });
-          return {
-            ...course,
-            learningObjectives: learningObjectivesArr,
-            tags: tagsArr,
-          };
-        });
-        setCourses(transformedData);
+        const data = await superuserService.getCourses();
+        setCourses(data);
       } catch (error) {
         toast.error("Failed to refresh courses");
       }
@@ -244,16 +109,9 @@ const SuperUserDashboard = () => {
   };
 
   const handleOrganizationCreated = () => {
-    // Refresh tenants after a new one is created
     const fetchTenants = async () => {
       try {
-        const response = await fetch(
-          `${import.meta.env.VITE_BACKEND_URL}/api/tenants`
-        );
-        if (!response.ok) {
-          throw new Error("Failed to fetch tenants");
-        }
-        const data = await response.json();
+        const data = await superuserService.getTenants();
         setTenants(data);
       } catch (error) {
         toast.error("Failed to refresh tenants");
@@ -548,25 +406,9 @@ const SuperUserDashboard = () => {
                                             )
                                           ) {
                                             try {
-                                              const res = await fetch(
-                                                `${
-                                                  import.meta.env
-                                                    .VITE_BACKEND_URL
-                                                }/api/superadmin/tenant/${
-                                                  tenant.id
-                                                }`,
-                                                {
-                                                  method: "DELETE",
-                                                  headers: {
-                                                    "Content-Type":
-                                                      "application/json",
-                                                  },
-                                                }
+                                              await superuserService.deleteTenant(
+                                                tenant.id
                                               );
-                                              if (!res.ok)
-                                                throw new Error(
-                                                  "Failed to delete organization"
-                                                );
                                               setTenants((prev) =>
                                                 prev.filter(
                                                   (t) => t.id !== tenant.id
@@ -654,7 +496,7 @@ const SuperUserDashboard = () => {
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   setDropdownOpen(false);
-                                  if (onUpdateCourse) onUpdateCourse();
+                                  setUpdateCourse(course);
                                 }}
                               >
                                 <Pencil className="h-4 w-4 text-white bg-green-600" />
@@ -687,27 +529,6 @@ const SuperUserDashboard = () => {
                 </div>
               </div>
             </TabsContent>
-
-            {/* <TabsContent value="users" className="animate-fade-in">
-              <Card className="overflow-hidden bg-card/50 backdrop-blur-sm border border-border/50">
-                <CardContent className="pt-6">
-                  <UsersList
-                    users={tenants.flatMap((tenant) =>
-                      (tenant.users || []).map((user) => ({
-                        id: user.id,
-                        name: user.name,
-                        email: user.email,
-                        department: "N/A",
-                        coursesCompleted: 0,
-                        totalCourses: tenant.courses?.length || 0,
-                        lastActivity: "N/A",
-                      }))
-                    )}
-                    title="All Platform Users"
-                  />
-                </CardContent>
-              </Card>
-            </TabsContent> */}
           </Tabs>
         </div>
       </main>

@@ -1,3 +1,4 @@
+import React from "react";
 import { useState, useEffect } from "react";
 import {
   Link,
@@ -10,16 +11,6 @@ import { Menu, X, LogIn, AtSign, Mail, ArrowLeft, LogOut } from "lucide-react";
 import { UserRole } from "../../App";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import {
-  AlertDialog,
-  AlertDialogContent,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogCancel,
-  AlertDialogAction,
-} from "@/components/ui/alert-dialog";
-import {
   Dialog,
   DialogContent,
   DialogHeader,
@@ -29,14 +20,9 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { toast } from "sonner";
 import { motion } from "framer-motion";
 import { useAuthStore } from "@/store/authStore";
-
-interface NavbarProps {
-  userRole?: UserRole;
-  onLogin?: (role: UserRole) => void;
-}
+import { NavbarProps } from "@/types/Navbar";
 
 const Navbar = ({ userRole, onLogin }: NavbarProps) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -136,15 +122,6 @@ const Navbar = ({ userRole, onLogin }: NavbarProps) => {
           domain: cleanDomain,
         };
 
-        console.log("Login Request Details:", {
-          url: `${import.meta.env.VITE_BACKEND_URL}/api/auth/login`,
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: requestBody,
-        });
-
         const response = await fetch(
           `${import.meta.env.VITE_BACKEND_URL}/api/auth/login`,
           {
@@ -157,14 +134,7 @@ const Navbar = ({ userRole, onLogin }: NavbarProps) => {
           }
         );
 
-        console.log("Response Status:", response.status);
-        console.log(
-          "Response Headers:",
-          Object.fromEntries(response.headers.entries())
-        );
-
         const responseData = await response.json();
-        console.log("Full Login Response:", responseData);
 
         if (!response.ok) {
           throw new Error(responseData.error || "Login failed");
@@ -172,7 +142,6 @@ const Navbar = ({ userRole, onLogin }: NavbarProps) => {
 
         // Store the token in localStorage
         localStorage.setItem("token", responseData.token);
-        console.log("Stored token:", responseData.token);
 
         // Decode the JWT token to get the tenant ID
         const tokenParts = responseData.token.split(".");
@@ -189,7 +158,6 @@ const Navbar = ({ userRole, onLogin }: NavbarProps) => {
 
         // Store the tenant ID
         localStorage.setItem("tenantId", tenantId);
-        console.log("Stored tenant ID:", tenantId);
 
         // Call the onLogin callback with the user role
         if (onLogin) {
@@ -205,7 +173,6 @@ const Navbar = ({ userRole, onLogin }: NavbarProps) => {
 
         setLoginDialogOpen(false);
       } catch (error) {
-        console.error("Login error:", error);
         if (error instanceof Error) {
           setErrorMessage(error.message || "Login failed. Please try again.");
         } else {

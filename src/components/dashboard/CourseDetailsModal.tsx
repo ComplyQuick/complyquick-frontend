@@ -1,4 +1,4 @@
-import * as React from "react";
+import React from "react";
 import {
   Dialog,
   DialogContent,
@@ -6,7 +6,6 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Badge } from "@/components/ui/badge";
 import {
   User,
   Mail,
@@ -31,35 +30,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-
-interface POC {
-  id: string;
-  name: string;
-  email: string;
-  role: string;
-  contact: string;
-}
-
-interface CourseDetailsModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  tenantId: string;
-  courseId: string;
-  course: {
-    title: string;
-    description: string;
-    learningObjectives: string;
-    properties: {
-      mandatory: boolean;
-      skippable: boolean;
-      retryType: "SAME" | "DIFFERENT";
-    };
-    pocs?: POC[];
-    tags?: string;
-  };
-  onUpdate?: () => void;
-  hideProperties?: boolean;
-}
+import { POC, CourseDetailsModalProps } from "@/types/course";
+import { courseService } from "@/services/courseService";
 
 const CourseDetailsModal = ({
   isOpen,
@@ -72,11 +44,23 @@ const CourseDetailsModal = ({
 }: CourseDetailsModalProps) => {
   const [editMode, setEditMode] = React.useState(false);
   const [editProperties, setEditProperties] = React.useState(course.properties);
-  const [editPocs, setEditPocs] = React.useState<POC[]>(course.pocs || []);
+  const [editPocs, setEditPocs] = React.useState<POC[]>(
+    (course.pocs || []).map((poc) => ({
+      ...poc,
+      role: poc.role || "",
+      contact: poc.contact || "",
+    }))
+  );
 
   React.useEffect(() => {
     setEditProperties(course.properties);
-    setEditPocs(course.pocs || []);
+    setEditPocs(
+      (course.pocs || []).map((poc) => ({
+        ...poc,
+        role: poc.role || "",
+        contact: poc.contact || "",
+      }))
+    );
   }, [course]);
 
   const handlePocChange = (idx: number, field: keyof POC, value: string) => {
@@ -102,7 +86,13 @@ const CourseDetailsModal = ({
   const handleCancel = () => {
     setEditMode(false);
     setEditProperties(course.properties);
-    setEditPocs(course.pocs || []);
+    setEditPocs(
+      (course.pocs || []).map((poc) => ({
+        ...poc,
+        role: poc.role || "",
+        contact: poc.contact || "",
+      }))
+    );
   };
 
   const handleSave = async () => {
@@ -111,33 +101,20 @@ const CourseDetailsModal = ({
         toast.error("Missing tenantId or courseId");
         return;
       }
-      const payload = {
-        tenantId,
-        courseId,
-        skippable: editProperties.skippable,
-        mandatory: editProperties.mandatory,
-        retryType: editProperties.retryType,
-        pocs: editPocs.map(({ id, ...rest }) => rest),
-      };
+
       const token = localStorage.getItem("token");
-      const res = await fetch(
-        `${
-          import.meta.env.VITE_BACKEND_URL
-        }/api/tenant-admin/courses/properties`,
+      const updated = await courseService.updateCourseProperties(
         {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
-          },
-          body: JSON.stringify(payload),
-        }
+          tenantId,
+          courseId,
+          skippable: editProperties.skippable,
+          mandatory: editProperties.mandatory,
+          retryType: editProperties.retryType,
+          pocs: editPocs.map(({ id, ...rest }) => rest),
+        },
+        token || undefined
       );
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || "Failed to update course properties");
-      }
-      const updated = await res.json();
+
       // Update modal state with new data
       setEditMode(false);
       setEditProperties({
@@ -151,8 +128,12 @@ const CourseDetailsModal = ({
       if (onUpdate) {
         onUpdate();
       }
-    } catch (e: any) {
-      toast.error(e.message || "Failed to update course properties");
+    } catch (e) {
+      if (e instanceof Error) {
+        toast.error(e.message);
+      } else {
+        toast.error("Failed to update course properties");
+      }
     }
   };
 

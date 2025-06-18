@@ -22,6 +22,8 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { toast } from "sonner";
+import { AddTenantDetailsFormProps } from "@/types/AddTenantDetailsForm";
+import { adminService } from "@/services/adminService";
 
 // Define the form schema with validations
 const tenantDetailsSchema = z.object({
@@ -38,17 +40,11 @@ const tenantDetailsSchema = z.object({
 
 type TenantDetailsFormValues = z.infer<typeof tenantDetailsSchema>;
 
-interface AddTenantDetailsFormProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  tenantId?: string;
-}
-
-const AddTenantDetailsForm: React.FC<AddTenantDetailsFormProps> = ({
+const AddTenantDetailsForm = ({
   open,
   onOpenChange,
   tenantId,
-}) => {
+}: AddTenantDetailsFormProps) => {
   const [isLoading, setIsLoading] = useState(false);
   const [existingDetails, setExistingDetails] =
     useState<TenantDetailsFormValues | null>(null);
@@ -73,13 +69,10 @@ const AddTenantDetailsForm: React.FC<AddTenantDetailsFormProps> = ({
       if (!tenantId) return;
 
       try {
-        const response = await fetch(
-          `${import.meta.env.VITE_BACKEND_URL}/api/tenants/${tenantId}/details`
-        );
-        if (response.ok) {
-          const data = await response.json();
-          setExistingDetails(data);
-          form.reset(data);
+        const response = await adminService.fetchTenantDetails(tenantId);
+        if (response.details) {
+          setExistingDetails(response.details);
+          form.reset(response.details);
         }
       } catch (error) {
         console.error("Error fetching tenant details:", error);
@@ -98,26 +91,7 @@ const AddTenantDetailsForm: React.FC<AddTenantDetailsFormProps> = ({
         throw new Error("No tenant ID found. Please create a tenant first.");
       }
 
-      console.log("Using tenant ID:", storedTenantId); // Debug log
-
-      const response = await fetch(
-        `${
-          import.meta.env.VITE_BACKEND_URL
-        }/api/tenants/${storedTenantId}/details`,
-        {
-          method: existingDetails ? "POST" : "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(data),
-        }
-      );
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || "Failed to save tenant details");
-      }
-
+      await adminService.updateTenantDetails(storedTenantId, data);
       toast.success("Tenant details saved successfully!");
       onOpenChange(false);
     } catch (error) {
@@ -141,7 +115,7 @@ const AddTenantDetailsForm: React.FC<AddTenantDetailsFormProps> = ({
           </DialogTitle>
           <DialogDescription>
             Configure your organization's contact details and key personnel
-            information.
+            information. Please fill in all the details before proceeding.
           </DialogDescription>
         </DialogHeader>
 
@@ -292,7 +266,7 @@ const AddTenantDetailsForm: React.FC<AddTenantDetailsFormProps> = ({
               </Button>
               <Button
                 type="submit"
-                className="bg-complybrand-700 hover:bg-complybrand-800"
+                className="bg-complybrand-700 hover:bg-complybrand-800 text-white"
                 disabled={isLoading}
               >
                 {isLoading ? "Saving..." : "Save Settings"}

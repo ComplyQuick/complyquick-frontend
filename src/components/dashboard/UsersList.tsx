@@ -1,10 +1,5 @@
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import React from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -13,24 +8,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
 import { BookOpen, CheckCircle, Clock, AlertCircle } from "lucide-react";
+import {  UsersListProps } from "@/types/UsersList";
 
-interface User {
-  id: string;
-  name: string;
-  email: string;
-  coursesCompleted: number;
-  totalCourses: number;
-  lastActivity: string;
-}
-
-interface UsersListProps {
-  users: User[];
-  title?: string;
-}
-
-const UsersList = ({ users, title = "" }: UsersListProps) => {
+const UsersList = ({ users, title = "Users" }: UsersListProps) => {
   return (
     <Card>
       <CardHeader>

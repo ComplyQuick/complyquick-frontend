@@ -9,18 +9,7 @@ import { Lightbulb, AlertTriangle } from "lucide-react";
 import ProctorRecorder, {
   ProctorRecorderHandle,
 } from "@/components/quiz/ProctorRecorder";
-
-interface MCQ {
-  question: string;
-  choices: {
-    a: string;
-    b: string;
-    c: string;
-    d: string;
-  };
-  correctAnswer: string;
-  hint: string;
-}
+import { MCQ } from "@/types/quiz";
 
 const Quiz = () => {
   const [mcqs, setMcqs] = useState<MCQ[]>([]);
@@ -47,19 +36,7 @@ const Quiz = () => {
       toast.error("Quiz data not found");
       navigate(`/course/${courseId}`);
     }
-    // Clean up on unmount
-    // return () => {
-    //   proctorRef.current?.stop();
-    // };
   }, [courseId, navigate]);
-
-  // Start proctoring after ref is set
-  // useEffect(() => {
-  //   if (proctorRef.current) {
-  //     console.log("[Quiz] Calling proctorRef.current.start()");
-  //     proctorRef.current.start();
-  //   }
-  // }, [proctorRef.current]);
 
   const handleViolation = (type: string) => {
     setViolations((prev) => [...prev, type]);
@@ -95,18 +72,13 @@ const Quiz = () => {
     setTimeout(() => {
       setToasts((prev) => prev.filter((t) => t.id !== id));
     }, 3000);
-    console.warn("[Proctor] Violation detected:", type);
   };
 
   const handleAnswer = (value: string) => {
-    setAnswers((prev) => {
-      const newAnswers = {
-        ...prev,
-        [currentQuestion]: value,
-      };
-      console.log("Current answers:", newAnswers);
-      return newAnswers;
-    });
+    setAnswers((prev) => ({
+      ...prev,
+      [currentQuestion]: value,
+    }));
     setShowHint(false);
   };
 
@@ -141,14 +113,7 @@ const Quiz = () => {
         toast.error("Please answer all questions before submitting");
         return;
       }
-      // Stop proctoring and log video
-      // proctorRef.current?.stop();
-      // console.log("[Proctor] Violations during quiz:", violations);
-      // if (videoBlob) {
-      //   console.log("[Quiz] Proctoring video recorded:", videoBlob);
-      // } else {
-      //   console.warn("[Quiz] No proctoring video available.");
-      // }
+
       // Calculate results with hint penalty
       const results = mcqs.map((question, index) => {
         const isCorrect = answers[index] === question.correctAnswer;
@@ -167,7 +132,6 @@ const Quiz = () => {
       localStorage.setItem("lastQuizCourseId", courseId || "");
       navigate("/quiz-results");
     } catch (error) {
-      console.error("Error submitting quiz:", error);
       toast.error("Failed to submit quiz. Please try again.");
     }
   };
@@ -297,8 +261,8 @@ const Quiz = () => {
         <div className="text-center text-xs text-gray-500 mt-4 mb-2">
           *All names, symbols, and references used in this content are purely
           fictional and intended for educational or illustrative purposes only.
-          Any resemblance to real persons, living or dead, or actual organizations
-          is purely coincidental.*
+          Any resemblance to real persons, living or dead, or actual
+          organizations is purely coincidental.*
         </div>
       </Card>
       {/* Proctoring component */}

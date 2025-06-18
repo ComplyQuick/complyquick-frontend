@@ -1,26 +1,14 @@
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
 import { Link, useNavigate } from "react-router-dom";
 import { useState, useEffect, useRef } from "react";
 import CourseDetailsModal from "./CourseDetailsModal";
 import {
   Users,
-  MessageCircle,
   Award,
   MoreVertical,
   Trash2,
   Pencil,
-  Play,
-  PlayCircle,
-  Download,
-  Clock,
   Check,
 } from "lucide-react";
 import {
@@ -29,60 +17,11 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import GeneralChatbot from "../course/GeneralChatbot";
-import { Menu } from "@headlessui/react";
 import { toast } from "sonner";
-
-interface CourseCardProps {
-  id: string;
-  courseId: string;
-  title: string;
-  description: string;
-  duration: string;
-  enrolledUsers: number;
-  progress?: number;
-  userRole: "superuser" | "admin" | "employee";
-  actionButton?: React.ReactNode;
-  tenantId: string;
-  token: string;
-  className?: string;
-  properties?: {
-    mandatory: boolean;
-    skippable: boolean;
-    retryType: "DIFFERENT" | "SAME";
-    isEnabled?: boolean;
-  } | null;
-  learningObjectives?: string;
-  tags?: string;
-  onClick?: () => void;
-  onTakeQuiz?: () => void;
-  canRetakeQuiz?: boolean;
-  canDownloadCertificate?: boolean;
-  certificateUrl?: string;
-  explanations?: Array<{
-    id: string;
-    content: string;
-    slideId: string;
-  }>;
-  courseDetails?: {
-    id: string;
-    title: string;
-    description: string;
-    learningObjectives: string;
-    properties: {
-      mandatory: boolean;
-      skippable: boolean;
-      retryType: "DIFFERENT" | "SAME";
-    };
-  };
-  onUpdateCourse?: () => void;
-}
+import { CourseCardProps } from "@/types/course";
+import { courseService } from "@/services/courseService";
 
 const CourseCard = ({
   id,
@@ -130,52 +69,23 @@ const CourseCard = ({
   const courseProperties = properties || defaultProperties;
   const isMandatory = courseProperties.mandatory;
 
-  // SVG patterns for backgrounds
-  const mandatoryPattern =
-    'url(\'data:image/svg+xml;utf8,<svg width="100" height="100" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><rect width="20" height="20" fill="%23f87171"/><path d="M0 0L20 20M20 0L0 20" stroke="%23fff" stroke-width="1" stroke-opacity="0.08"/></svg>\')';
+  const circlePattern =
+    'url(\'data:image/svg+xml;utf8,<svg width="100" height="100" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><rect width="20" height="20" fill="%23f87171"/><circle cx="10" cy="10" r="2" fill="%23fff" fill-opacity="0.08"/></svg>\')';
   const nonMandatoryPattern =
     'url(\'data:image/svg+xml;utf8,<svg width="100" height="100" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><rect width="20" height="20" fill="%233b82f6"/><circle cx="10" cy="10" r="2" fill="%23fff" fill-opacity="0.08"/></svg>\')';
+
+  const pattern = isMandatory ? circlePattern : nonMandatoryPattern;
   const topBg = isMandatory
     ? "bg-rose-400 dark:bg-rose-600"
     : "bg-blue-400 dark:bg-blue-600";
-  const pattern = isMandatory ? mandatoryPattern : nonMandatoryPattern;
 
-  const titleColor = "text-white";
-  const cardBorder = "border-0";
-  const cardShadow = "shadow-lg hover:shadow-xl transition-all duration-300";
-
-  const progressIndicator = isMandatory
-    ? "bg-gradient-to-r from-red-400 to-red-500 dark:from-red-500 dark:to-red-600"
-    : "bg-gradient-to-r from-blue-400 to-blue-500 dark:from-blue-500 dark:to-blue-600";
-
-  const getButtonText = () => {
-    if (progress === 100) return "Start Again";
-    if (progress > 0) return "Resume Course";
-    return "Start Course";
-  };
-
-  const buttonClass =
-    progress === 100
-      ? "bg-green-600 hover:bg-green-700 text-white"
-      : progress > 0
-      ? "bg-black text-white border border-white hover:bg-gray-900"
-      : isMandatory
-      ? "bg-[#1746FF] text-white hover:bg-[#1746FF]/90"
-      : "border border-white text-white bg-transparent hover:bg-white/10";
-
-  const handleChatbotClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setIsChatbotOpen(true);
-  };
-
-  // Download certificate handler
   const handleCertificateDownload = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!certificateUrl) return;
     const match = certificateUrl.match(/\/d\/([\w-]+)/);
     const fileId = match ? match[1] : null;
     if (!fileId) {
-      console.error("Invalid Google Drive URL");
+      toast.error("Invalid Google Drive URL");
       return;
     }
     const directUrl = `https://drive.google.com/uc?export=download&id=${fileId}`;
@@ -211,45 +121,15 @@ const CourseCard = ({
     if (isToggling || isEnabled === null) return;
     setIsToggling(true);
     try {
-      console.log("Toggle request params:", {
+      const data = await courseService.toggleCourse(
         tenantId,
         courseId,
-        isEnabled: !isEnabled,
-        token: token ? "present" : "missing",
-      });
-
-      const response = await fetch(
-        `${
-          import.meta.env.VITE_BACKEND_URL
-        }/api/tenant-admin/tenants/${tenantId}/courses/${courseId}/toggle`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ isEnabled: !isEnabled }),
-        }
+        token,
+        !isEnabled
       );
-
-      if (!response.ok) {
-        const error = await response.json();
-        console.error("Toggle request failed:", {
-          status: response.status,
-          statusText: response.statusText,
-          error,
-        });
-        throw new Error(error.error || "Failed to toggle course status");
-      }
-
-      const data = await response.json();
-      console.log("Toggle request successful:", data);
       setIsEnabled(!isEnabled);
     } catch (e) {
-      console.error("Error toggling course:", e);
-      toast.error(
-        e instanceof Error ? e.message : "Failed to toggle course status"
-      );
+      toast.error("Failed to toggle course status");
     } finally {
       setIsToggling(false);
     }
@@ -265,7 +145,7 @@ const CourseCard = ({
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
       >
-        {/* Top colored section with pattern (reduced height for employee) */}
+        {/* Top colored section with pattern */}
         <div
           className={`w-full ${
             userRole === "employee" ? "h-[120px]" : "flex-[4]"
@@ -297,37 +177,6 @@ const CourseCard = ({
             >
               {(courseDetails?.title || title).slice(0, 8)}
             </span>
-            {/* Overlay up to 4 tags at random positions (now for all roles) */}
-            {(() => {
-              let tagList: string[] = [];
-              if (Array.isArray(tags)) {
-                tagList = tags;
-              } else if (typeof tags === "string") {
-                tagList = tags
-                  .split(",")
-                  .map((t) => t.trim())
-                  .filter(Boolean);
-              }
-              const tagPositions = [
-                { top: "18%", left: "12%", rotate: "-8deg" },
-                { top: "60%", left: "20%", rotate: "12deg" },
-                { top: "35%", right: "10%", rotate: "6deg" },
-                { bottom: "12%", left: "40%", rotate: "-14deg" },
-              ];
-              return tagList.slice(0, 4).map((tag, idx) => (
-                <span
-                  key={idx}
-                  className="absolute font-bold text-xs md:text-base lg:text-lg opacity-20 text-white dark:text-white select-none pointer-events-none whitespace-nowrap"
-                  style={{
-                    ...tagPositions[idx],
-                    position: "absolute",
-                    transform: `rotate(${tagPositions[idx].rotate})`,
-                  }}
-                >
-                  {tag}
-                </span>
-              ));
-            })()}
           </span>
         </div>
 
@@ -435,9 +284,6 @@ const CourseCard = ({
                     onClick={(e) => {
                       e.stopPropagation();
                       if (onClick) {
-                        console.log(
-                          "CourseCard Start/Resume button clicked, calling onClick prop"
-                        );
                         onClick();
                       }
                     }}
@@ -459,9 +305,6 @@ const CourseCard = ({
                   onClick={(e) => {
                     e.stopPropagation();
                     if (onClick) {
-                      console.log(
-                        "CourseCard Start/Resume button clicked, calling onClick prop"
-                      );
                       onClick();
                     }
                   }}
@@ -510,13 +353,10 @@ const CourseCard = ({
               <div className="flex gap-2">
                 {userRole !== "superuser" && (
                   <Button
-                    className="flex-1 rounded-lg  dark:bg-red-600 text-white font-semibold py-2 hover:bg-blue-600 dark:hover:bg-blue-700 transition"
+                    className="flex-1 rounded-lg  bg-red-600 text-white font-semibold py-2 hover:bg-blue-600 dark:hover:bg-blue-700 transition"
                     onClick={(e) => {
                       e.stopPropagation();
                       if (onClick) {
-                        console.log(
-                          "CourseCard Play/Start button clicked, calling onClick prop"
-                        );
                         onClick();
                       } else {
                         navigate(
@@ -673,16 +513,7 @@ const CourseCard = ({
                   try {
                     const courseDeleteId =
                       userRole === "superuser" ? id : courseId;
-                    const res = await fetch(
-                      `${
-                        import.meta.env.VITE_BACKEND_URL
-                      }/api/superadmin/course/${courseDeleteId}`,
-                      {
-                        method: "DELETE",
-                        headers: { "Content-Type": "application/json" },
-                      }
-                    );
-                    if (!res.ok) throw new Error("Failed to delete course");
+                    await courseService.deleteCourse(courseDeleteId);
                     toast.success("Course deleted successfully");
                     setShowCourseActions(false);
                     // Optionally trigger a refresh in parent

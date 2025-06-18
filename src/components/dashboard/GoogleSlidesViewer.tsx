@@ -1,16 +1,11 @@
 import React, { useRef, useEffect } from "react";
+import { GoogleSlidesViewerProps } from "@/types/GoogleSlidesViewer";
 
-interface GoogleSlidesViewerProps {
-  materialUrl: string;
-  currentSlideIndex: number;
-  onSlideChange: (index: number) => void;
-}
-
-const GoogleSlidesViewer: React.FC<GoogleSlidesViewerProps> = ({
+const GoogleSlidesViewer = ({
   materialUrl,
   currentSlideIndex,
   onSlideChange,
-}) => {
+}: GoogleSlidesViewerProps) => {
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
   // Extract the presentation ID from the Google Slides URL (robust for any format)
@@ -29,11 +24,8 @@ const GoogleSlidesViewer: React.FC<GoogleSlidesViewerProps> = ({
   const embedUrl = presentationId
     ? `https://docs.google.com/presentation/d/${presentationId}/embed?start=false&loop=false&delayms=3000&rm=minimal&slide=${slideNumber}`
     : "";
-
-  // Handle slide changes by reloading the iframe with the new slide parameter
   useEffect(() => {
     if (iframeRef.current && embedUrl) {
-      // Force iframe to reload with new slide parameter
       iframeRef.current.src = embedUrl;
     }
   }, [currentSlideIndex, embedUrl]);

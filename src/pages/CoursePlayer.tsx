@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import {
   useParams,
   useNavigate,
@@ -11,70 +11,16 @@ import CourseNotFound from "@/components/course/CourseNotFound";
 import ChatHelp from "@/components/course/ChatHelp";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
-} from "@/components/ui/card";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { Slide, CoursePlayerProps } from "@/types/CoursePlayer";
+import { adminService } from "@/services/adminService";
 
-// API endpoints for a real implementation
-const API_ENDPOINTS = {
-  // SSO Login
-  SSO_LOGIN: "/api/auth/sso/login",
-  SSO_CALLBACK: "/api/auth/sso/callback",
-
-  // Admin/Superuser Login
-  ADMIN_LOGIN: "/api/auth/login",
-
-  // Course Content
-  GET_COURSE_SLIDES: (courseId: string) => `/api/courses/${courseId}/slides`,
-  GET_COURSE_EXPLANATIONS: (courseId: string, organizationId: string) =>
-    `/api/courses/${courseId}/explanations?organizationId=${organizationId}`,
-  GET_PRESENTER_AVATAR: (courseId: string) =>
-    `/api/courses/${courseId}/presenter`,
-  GET_SLIDE_AUDIO: (courseId: string, slideId: string) =>
-    `/api/courses/${courseId}/slides/${slideId}/audio`,
-
-  // Course Progress
-  UPDATE_PROGRESS: (courseId: string) => `/api/courses/${courseId}/progress`,
-
-  // S3 File Paths (these would be returned by the API, not called directly)
-  S3_PPT_PATH:
-    "s3://myaudiouploadbucket/Blue White Professional Modern Safety Training Presentation.pptx",
-  S3_SLIDE_IMAGES_PATH: (courseId: string) =>
-    `s3://course-content/${courseId}/slides/`,
-  S3_AUDIO_PATH: (courseId: string) => `s3://course-content/${courseId}/audio/`,
-};
-
-interface Slide {
-  id: string;
-  title: string;
-  content: string;
-  completed: boolean;
-}
-
-interface CoursePlayerProps {
-  courseId: string;
-  tenantId: string;
-  token: string;
-  progress: number;
-  properties?: {
-    mandatory: boolean;
-    skippable: boolean;
-    retryType: "DIFFERENT" | "SAME";
-  } | null;
-}
-
-const CoursePlayer = ({
+const CoursePlayer: React.FC<CoursePlayerProps> = ({
   courseId,
   tenantId,
   token,
   progress,
   properties,
-}: CoursePlayerProps) => {
+}) => {
   const { courseId: urlCourseId } = useParams<{ courseId: string }>();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -88,12 +34,16 @@ const CoursePlayer = ({
 
   // Get properties from navigation state or props
   const stateProperties = location.state?.properties;
-  const courseProperties = stateProperties ||
-    properties || {
-      mandatory: true,
-      skippable: false,
-      retryType: "SAME" as const,
-    };
+  const courseProperties = useMemo(
+    () =>
+      stateProperties ||
+      properties || {
+        mandatory: true,
+        skippable: false,
+        retryType: "SAME" as const,
+      },
+    [stateProperties, properties]
+  );
 
   const [slides, setSlides] = useState<Slide[]>([]);
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
@@ -121,40 +71,22 @@ const CoursePlayer = ({
   useEffect(() => {
     const fetchExplanationsAndSetSlide = async () => {
       if (!courseId || !urlTenantId || !urlToken) {
-        console.error("Missing required parameters");
+        toast.error("Missing required parameters");
         return;
       }
 
       try {
-        // Fetch explanations array
-        const response = await fetch(
-          `${
-            import.meta.env.VITE_BACKEND_URL
-          }/api/courses/${courseId}/explanations?tenantId=${urlTenantId}`,
-          {
-            headers: {
-              Authorization: `Bearer ${urlToken}`,
-              "Content-Type": "application/json",
-            },
-          }
+        const { explanations } = await adminService.fetchCourseExplanations(
+          courseId,
+          urlTenantId,
+          urlToken
         );
-
-        if (!response.ok) {
-          throw new Error("Failed to fetch explanations");
-        }
-
-        const data = await response.json();
-        console.log("[CoursePlayer] Explanations response:", data);
-
-        // The response is an object with an explanations array
-        const explanations = data.explanations || [];
 
         if (!Array.isArray(explanations)) {
           throw new Error("Invalid explanations format received from API");
         }
 
         const totalSlides = explanations.length;
-        console.log("[CoursePlayer] Total slides:", totalSlides);
 
         // Calculate resume slide
         let resumeSlide = 0;
@@ -163,33 +95,25 @@ const CoursePlayer = ({
           // Ensure we don't exceed the total number of slides
           if (resumeSlide >= totalSlides) resumeSlide = totalSlides - 1;
         }
-        console.log(
-          `[CoursePlayer] Calculated resumeSlide: ${resumeSlide} (progress: ${urlProgress}, totalSlides: ${totalSlides})`
-        );
 
         // Convert explanations to slides format
         const slidesData = explanations.map(
-          (explanation: any, index: number) => {
-            const slideObj = {
-              id: `slide-${index + 1}`,
-              title: `Slide ${index + 1}`,
-              content: explanation.content || explanation, // Handle both object and string formats
-              completed: false,
-            };
-            console.log(`[CoursePlayer] Slide ${index}:`, slideObj);
-            return slideObj;
-          }
+          (explanation: { content: string } | string, index: number) => ({
+            id: `slide-${index + 1}`,
+            title: `Slide ${index + 1}`,
+            content:
+              typeof explanation === "string"
+                ? explanation
+                : explanation.content,
+            completed: false,
+          })
         );
 
         setSlides(slidesData);
         setCurrentSlideIndex(resumeSlide);
         resumeSlideRef.current = resumeSlide;
-        console.log(
-          `[CoursePlayer] Set resumeSlideRef.current = ${resumeSlide}`
-        );
         setIsLoading(false);
       } catch (error) {
-        console.error("[CoursePlayer] Error fetching explanations:", error);
         toast.error("Failed to load course content");
         setIsLoading(false);
       }
@@ -199,63 +123,41 @@ const CoursePlayer = ({
   }, [courseId, urlTenantId, urlToken, urlProgress]);
 
   const handleSlideChange = (index: number) => {
-    console.log(
-      `[CoursePlayer] Changing slide from ${currentSlideIndex} to ${index}`
-    );
     setCurrentSlideIndex(index);
   };
 
   const handleCourseComplete = () => {
-    console.log("Course completed");
     setCourseCompleted(true);
     toast.success("Course completed successfully!");
   };
 
   const handleReturnToDashboard = () => {
-    console.log("Returning to dashboard");
     navigate(`/dashboard?tenantId=${urlTenantId}&token=${urlToken}`);
   };
 
   const handleSkipForward = () => {
     if (audioElement && courseProperties.skippable) {
       audioElement.currentTime += 5;
-      console.log(
-        "Skipped forward 5 seconds. New time:",
-        audioElement.currentTime
-      );
     }
   };
 
   const handleSkipBackward = () => {
     if (audioElement && courseProperties.skippable) {
       audioElement.currentTime = Math.max(0, audioElement.currentTime - 5);
-      console.log(
-        "Skipped backward 5 seconds. New time:",
-        audioElement.currentTime
-      );
     }
   };
 
   if (!courseId) {
-    console.log("No courseId found, showing CourseNotFound");
     return <CourseNotFound />;
   }
 
   if (slides.length === 0) {
-    console.log("No slides loaded, showing loading spinner");
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-complybrand-700"></div>
       </div>
     );
   }
-
-  console.log("[CoursePlayer] Rendering with:", {
-    currentSlideIndex,
-    resumeSlideIndex: resumeSlideRef.current,
-    slidesLength: slides.length,
-    slides,
-  });
 
   return (
     <div className="h-screen flex flex-col bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
@@ -276,10 +178,6 @@ const CoursePlayer = ({
                 onSkipBackward={handleSkipBackward}
                 resumeSlideIndex={resumeSlideRef.current}
               />
-              {console.log(
-                "[CoursePlayer] Rendering SlidePlayer with resumeSlideIndex:",
-                resumeSlideRef.current
-              )}
             </div>
           </div>
 

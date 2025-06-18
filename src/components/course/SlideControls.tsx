@@ -1,3 +1,4 @@
+import React from "react";
 import { Button } from "@/components/ui/button";
 import {
   Play,
@@ -7,39 +8,13 @@ import {
   Volume2,
   VolumeX,
   Subtitles,
-  Captions,
-  Check,
   Maximize,
 } from "lucide-react";
 import { Slider } from "@/components/ui/slider";
 import { toast } from "sonner";
-import { motion } from "framer-motion";
+import { SlideControlsProps } from "@/types/course";
 
-interface SlideControlsProps {
-  isPlaying: boolean;
-  togglePlayback: () => void;
-  handlePrev: () => void;
-  handleNext: () => void;
-  isFirstSlide: boolean;
-  isLastSlide: boolean;
-  isMuted: boolean;
-  toggleMute: () => void;
-  volume: number;
-  handleVolumeChange: (value: number[]) => void;
-  playbackRate: number;
-  changePlaybackRate: (rate: number) => void;
-  onComplete: () => void;
-  showSubtitles: boolean;
-  toggleSubtitles: () => void;
-  canAdvance: boolean;
-  progress: number;
-  setProgress: (progress: number) => void;
-  setCanAdvance: (canAdvance: boolean) => void;
-  isAdminView?: boolean;
-  onFullScreen?: () => void;
-}
-
-const SlideControls: React.FC<SlideControlsProps> = ({
+const SlideControls = ({
   isPlaying,
   togglePlayback,
   handlePrev,
@@ -61,7 +36,7 @@ const SlideControls: React.FC<SlideControlsProps> = ({
   setCanAdvance,
   isAdminView = false,
   onFullScreen,
-}) => {
+}: SlideControlsProps) => {
   const handleNextClick = () => {
     if (!isAdminView && !canAdvance && progress < 80) {
       toast.info(

@@ -34,7 +34,6 @@ const ProctorRecorder = forwardRef<ProctorRecorderHandle, ProctorRecorderProps>(
         await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
         await faceapi.nets.faceLandmark68TinyNet.loadFromUri(MODEL_URL);
         setModelsLoaded(true);
-        console.log("[ProctorRecorder] face-api.js models loaded");
       };
       loadModels();
     }, []);
@@ -79,18 +78,9 @@ const ProctorRecorder = forwardRef<ProctorRecorderHandle, ProctorRecorderProps>(
       return () => clearInterval(intervalId);
     }, [modelsLoaded, isRecording, onViolation]);
 
-    // Debug: log when the component renders and videoRef is set
-    useEffect(() => {
-      console.log(
-        "[ProctorRecorder] Rendered. videoRef.current:",
-        videoRef.current
-      );
-    });
-
     // Expose start/stop to parent
     useImperativeHandle(ref, () => ({
       start: () => {
-        console.log("[ProctorRecorder] start() method called from parent");
         startRecording();
       },
       stop: () => {
@@ -117,49 +107,29 @@ const ProctorRecorder = forwardRef<ProctorRecorderHandle, ProctorRecorderProps>(
     const startRecording = async () => {
       if (isRecording) return;
       try {
-        console.log("[ProctorRecorder] startRecording called");
-        setTimeout(() => {
-          console.log(
-            "[ProctorRecorder] videoRef.current in startRecording:",
-            videoRef.current
-          );
-        }, 1000);
         const stream = await navigator.mediaDevices.getUserMedia({
           video: true,
           audio: true,
         });
-        console.log("[ProctorRecorder] Webcam access granted.");
         streamRef.current = stream;
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
-          console.log("[ProctorRecorder] Video element srcObject set.");
-        } else {
-          console.warn("[ProctorRecorder] videoRef.current is null!");
         }
 
         const mediaRecorder = new MediaRecorder(stream, {
           mimeType: "video/webm;codecs=vp9,opus",
         });
-        console.log("[ProctorRecorder] MediaRecorder created.");
 
         mediaRecorderRef.current = mediaRecorder;
         chunksRef.current = [];
 
         mediaRecorder.ondataavailable = (event) => {
-          console.log("[ProctorRecorder] ondataavailable called.", event);
           if (event.data.size > 0) {
             chunksRef.current.push(event.data);
-            console.log(
-              "[ProctorRecorder] Data chunk added. Size:",
-              event.data.size
-            );
           }
         };
 
         mediaRecorder.onstop = () => {
-          console.log(
-            "[ProctorRecorder] MediaRecorder stopped. Creating blob..."
-          );
           const blob = new Blob(chunksRef.current, {
             type: "video/webm",
           });
@@ -169,16 +139,13 @@ const ProctorRecorder = forwardRef<ProctorRecorderHandle, ProctorRecorderProps>(
           if (streamRef.current) {
             streamRef.current.getTracks().forEach((track) => {
               track.stop();
-              console.log("[ProctorRecorder] Track stopped:", track.kind);
             });
           }
         };
 
         mediaRecorder.start();
         setIsRecording(true);
-        console.log("[ProctorRecorder] MediaRecorder started.");
       } catch (error) {
-        console.error("[ProctorRecorder] Error accessing webcam:", error);
         toast.error(
           "Failed to access webcam. Please ensure you have granted camera permissions."
         );
@@ -188,13 +155,8 @@ const ProctorRecorder = forwardRef<ProctorRecorderHandle, ProctorRecorderProps>(
 
     const stopRecording = () => {
       if (mediaRecorderRef.current && isRecording) {
-        console.log("[ProctorRecorder] Cleaning up. Stopping MediaRecorder...");
         mediaRecorderRef.current.stop();
         setIsRecording(false);
-      } else {
-        console.log(
-          "[ProctorRecorder] Cleanup: No active MediaRecorder to stop."
-        );
       }
     };
 
