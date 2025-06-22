@@ -4,7 +4,6 @@ import {
   CourseEnrolledUsers,
   RecentTenant,
 } from "@/types/SuperuserDashboard";
-import { Course as AddCourseFormCourse } from "@/types/AddCourseForm";
 import {
   CreateOrganizationPayload,
   CreateOrganizationResponse,
@@ -153,5 +152,77 @@ export const superuserService = {
     if (!response.ok) {
       throw new Error("Failed to delete organization");
     }
+  },
+
+  /**
+   * Fetch all active tenants
+   */
+  async getActiveTenants() {
+    console.log("Fetching active tenants...");
+    const response = await fetch(
+      `${BACKEND_URL}/api/superadmin/tenants/active`
+    );
+    if (!response.ok) {
+      throw new Error("Failed to fetch active tenants");
+    }
+    const data = await response.json();
+    console.log("Active tenants:", data);
+    return data;
+  },
+
+  /**
+   * Fetch all inactive tenants
+   */
+  async getInactiveTenants() {
+    console.log("Fetching inactive tenants...");
+    const response = await fetch(
+      `${BACKEND_URL}/api/superadmin/tenants/inactive`
+    );
+    if (!response.ok) {
+      throw new Error("Failed to fetch inactive tenants");
+    }
+    const data = await response.json();
+    console.log("Inactive tenants:", data);
+    return data;
+  },
+
+  /**
+   * Inactivate (deactivate) a tenant
+   */
+  async inactivateTenant(tenantId) {
+    console.log("Inactivating tenant:", tenantId);
+    const response = await fetch(
+      `${BACKEND_URL}/api/superadmin/tenants/${tenantId}/inactivate`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+      }
+    );
+    if (!response.ok) {
+      throw new Error("Failed to inactivate tenant");
+    }
+    const data = await response.json();
+    console.log("Tenant inactivated:", data);
+    return data;
+  },
+
+  /**
+   * Activate a tenant
+   */
+  async activateTenant(tenantId) {
+    console.log("Activating tenant:", tenantId);
+    const response = await fetch(
+      `${BACKEND_URL}/api/superadmin/tenants/${tenantId}/activate`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+      }
+    );
+    if (!response.ok) {
+      throw new Error("Failed to activate tenant");
+    }
+    const data = await response.json();
+    console.log("Tenant activated:", data);
+    return data;
   },
 };

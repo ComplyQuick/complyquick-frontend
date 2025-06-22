@@ -11,7 +11,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { Award, Clock, BookOpen, Download } from "lucide-react";
+import { Award, Clock, BookOpen, Download, Star } from "lucide-react";
 import CourseCard from "@/components/dashboard/CourseCard";
 import { toast } from "sonner";
 import {
@@ -292,7 +292,14 @@ const UserDashboard = () => {
         <div className="container mx-auto px-4 py-8">
           <div className="flex flex-col lg:flex-row gap-8">
             <div className="lg:w-1/3 w-full">
-              <Card className="animate-fade-in mt-8 shadow-lg rounded-2xl bg-white dark:bg-neutral-900 border-0 p-0 overflow-hidden">
+              {/* Mandatory Star and Label */}
+              <div className="flex items-center gap-2 mb-2">
+                <Star className="h-5 w-5 text-yellow-400" fill="#facc15" />
+                <span className="text-sm font-semibold text-yellow-600">
+                  Mandatory
+                </span>
+              </div>
+              <Card className="animate-fade-in mt-0 shadow-lg rounded-2xl bg-white dark:bg-neutral-900 border-0 p-0 overflow-hidden">
                 <CardHeader className="pb-2 border-b border-neutral-100 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-800">
                   <CardTitle className="text-xl font-bold text-neutral-900 dark:text-white mb-1">
                     Welcome back, {userProfile?.name || "Employee"}!
@@ -345,7 +352,8 @@ const UserDashboard = () => {
                         </div>
                         <Progress
                           value={overallProgress}
-                          className="h-2 bg-neutral-200 dark:bg-neutral-700"
+                          className="h-2 light:bg-grey-300 dark:bg-neutral-700"
+                          indicatorClassName="bg-pink-500"
                         />
                       </>
                     )}
@@ -362,6 +370,7 @@ const UserDashboard = () => {
                         <Progress
                           value={mandatoryProgress}
                           className="h-2 bg-red-200 dark:bg-red-700"
+                          indicatorClassName="bg-pink-500"
                         />
                         <div className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
                           {mandatoryCourses.length} mandatory courses
@@ -381,6 +390,7 @@ const UserDashboard = () => {
                         <Progress
                           value={nonMandatoryProgress}
                           className="h-2 bg-blue-200 dark:bg-blue-700"
+                          indicatorClassName="bg-pink-500"
                         />
                         <div className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
                           {nonMandatoryCourses.length} non-mandatory courses
@@ -437,7 +447,7 @@ const UserDashboard = () => {
                     className={`transition-all duration-200 ${
                       activeTab === "all"
                         ? "bg-complybrand-700 text-white hover:bg-complybrand-800"
-                        : "hover:bg-muted/20"
+                        : "hover:bg-muted/20 hover:text-white"
                     }`}
                   >
                     All
@@ -448,7 +458,7 @@ const UserDashboard = () => {
                     className={`transition-all duration-200 ${
                       activeTab === "inProgress"
                         ? "bg-complybrand-700 text-white hover:bg-complybrand-800"
-                        : "hover:bg-muted/20"
+                        : "hover:bg-muted/20 hover:text-white"
                     }`}
                   >
                     In Progress
@@ -459,7 +469,7 @@ const UserDashboard = () => {
                     className={`transition-all duration-200 ${
                       activeTab === "completed"
                         ? "bg-complybrand-700 text-white hover:bg-complybrand-800"
-                        : "hover:bg-muted/20"
+                        : "hover:bg-muted/20 hover:text-white"
                     }`}
                   >
                     Completed

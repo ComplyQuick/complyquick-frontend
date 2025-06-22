@@ -27,6 +27,7 @@ import Certificate from "@/components/course/Certificate";
 import Login from "./pages/Login";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import AdminCourseExplanations from "@/pages/AdminCourseExplanations";
+import AdminLogin from "./pages/AdminLogin";
 export type UserRole = "superuser" | "admin" | "employee" | null;
 
 const queryClient = new QueryClient();
@@ -75,6 +76,7 @@ const App = () => {
               <Routes>
                 <Route path="/" element={<Index setUserRole={setUserRole} />} />
                 <Route path="/login" element={<Login />} />
+                <Route path="/admin/login" element={<AdminLogin />} />
                 <Route
                   path="/superuser/dashboard"
                   element={

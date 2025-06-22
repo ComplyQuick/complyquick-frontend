@@ -163,6 +163,28 @@
   .highlight-shadow-hover:hover {
     box-shadow: 8px 8px 24px 0 rgba(255, 221, 51, 0.4); /* yellow shadow */
   }
+
+  /* Error dialog animations */
+  .animate-error-shake {
+    animation: error-shake 0.6s ease-in-out;
+  }
+
+  .animate-error-glow {
+    animation: error-glow 2s ease-in-out infinite;
+  }
+
+  .animate-slide-in-error {
+    animation: slide-in-error 0.4s ease-out;
+  }
+
+  .animate-icon-bounce {
+    animation: icon-bounce 1s ease-in-out;
+  }
+
+  .error-dialog-entrance {
+    animation: slide-in-error 0.4s ease-out,
+      error-glow 2s ease-in-out infinite 0.4s;
+  }
 }
 
 @keyframes floating {
@@ -182,5 +204,67 @@
   }
   50% {
     opacity: 0.7;
+  }
+}
+
+/* Error dialog animations */
+@keyframes error-shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  10%,
+  30%,
+  50%,
+  70%,
+  90% {
+    transform: translateX(-2px);
+  }
+  20%,
+  40%,
+  60%,
+  80% {
+    transform: translateX(2px);
+  }
+}
+
+@keyframes error-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 20px rgba(239, 68, 68, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 30px rgba(239, 68, 68, 0.6);
+  }
+}
+
+@keyframes slide-in-error {
+  0% {
+    opacity: 0;
+    transform: translateY(-20px) scale(0.95);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes icon-bounce {
+  0%,
+  20%,
+  53%,
+  80%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+  40%,
+  43% {
+    transform: translate3d(0, -8px, 0);
+  }
+  70% {
+    transform: translate3d(0, -4px, 0);
+  }
+  90% {
+    transform: translate3d(0, -2px, 0);
   }
 }

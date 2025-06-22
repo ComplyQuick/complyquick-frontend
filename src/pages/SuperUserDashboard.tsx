@@ -31,6 +31,13 @@ import {
   RecentTenant,
 } from "@/types/SuperuserDashboard";
 import { superuserService } from "@/services/superuserService";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 
 const SuperUserDashboard = () => {
   const [activeTab, setActiveTab] = useState("overview");
@@ -48,6 +55,12 @@ const SuperUserDashboard = () => {
     CourseEnrolledUsers[]
   >([]);
   const [recentTenants, setRecentTenants] = useState<RecentTenant[]>([]);
+  const [orgTab, setOrgTab] = useState<"active" | "inactive">("active");
+  const [confirmModalOpen, setConfirmModalOpen] = useState(false);
+  const [confirmAction, setConfirmAction] = useState<
+    "deactivate" | "activate" | null
+  >(null);
+  const [selectedTenant, setSelectedTenant] = useState<Tenant | null>(null);
 
   const backendUrl = import.meta.env.VITE_BACKEND_URL || "";
 
@@ -95,6 +108,30 @@ const SuperUserDashboard = () => {
     fetchRecentTenants();
   }, []);
 
+  useEffect(() => {
+    const fetchTenants = async () => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        let data;
+        if (orgTab === "active") {
+          console.log("Fetching active organizations...");
+          data = await superuserService.getActiveTenants();
+        } else {
+          console.log("Fetching inactive organizations...");
+          data = await superuserService.getInactiveTenants();
+        }
+        setTenants(data);
+      } catch (err) {
+        setError("Failed to load organizations");
+        toast.error("Failed to load organizations. Please try again later.");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchTenants();
+  }, [orgTab]);
+
   const handleCourseCreated = () => {
     const fetchCourses = async () => {
       try {
@@ -119,6 +156,40 @@ const SuperUserDashboard = () => {
     };
 
     fetchTenants();
+  };
+
+  // Handler for menu click
+  const handleMenuAction = (
+    tenant: Tenant,
+    action: "deactivate" | "activate"
+  ) => {
+    setSelectedTenant(tenant);
+    setConfirmAction(action);
+    setConfirmModalOpen(true);
+  };
+
+  // Handler for confirming modal
+  const handleConfirm = async () => {
+    if (!selectedTenant || !confirmAction) return;
+    setConfirmModalOpen(false);
+    try {
+      if (confirmAction === "deactivate") {
+        console.log("Deactivating tenant:", selectedTenant.id);
+        await superuserService.inactivateTenant(selectedTenant.id);
+        setTenants((prev) => prev.filter((t) => t.id !== selectedTenant.id));
+        toast.success("Organization deactivated successfully");
+      } else {
+        console.log("Activating tenant:", selectedTenant.id);
+        await superuserService.activateTenant(selectedTenant.id);
+        setTenants((prev) => prev.filter((t) => t.id !== selectedTenant.id));
+        toast.success("Organization activated successfully");
+      }
+    } catch (err) {
+      toast.error(`Failed to ${confirmAction} organization`);
+    } finally {
+      setSelectedTenant(null);
+      setConfirmAction(null);
+    }
   };
 
   return (
@@ -233,17 +304,11 @@ const SuperUserDashboard = () => {
               >
                 Courses
               </TabsTrigger>
-              {/* <TabsTrigger
-                value="users"
-                className="data-[state=active]:bg-complybrand-600 data-[state=active]:text-white"
-              >
-                Users
-              </TabsTrigger> */}
             </TabsList>
 
             <TabsContent value="overview" className="space-y-4 animate-fade-in">
               <div className="px-8">
-                <div className="grid w-full gap-6 md:grid-cols-2 lg:grid-cols-4">
+                <div className="grid w-full gap-6 md:grid-cols-2 lg:grid-cols-3">
                   {isLoading ? (
                     <div className="col-span-full text-center py-8">
                       <p className="text-muted-foreground">
@@ -315,8 +380,7 @@ const SuperUserDashboard = () => {
                             </p>
                             <p className="text-sm text-muted-foreground">
                               {tenant.userCount} users ·{" "}
-                              {tenant.enabledCourseCount} courses (
-                              {tenant.enabledCourseCount} enabled)
+                              {tenant.enabledCourseCount} courses
                             </p>
                           </div>
                           <div className="ml-auto font-medium">
@@ -346,6 +410,28 @@ const SuperUserDashboard = () => {
                   <CardDescription>
                     Manage all organizations registered on ComplyQuick
                   </CardDescription>
+                  <div className="flex gap-2 mt-4">
+                    <button
+                      className={`px-4 py-1 rounded-lg text-sm font-medium transition-colors ${
+                        orgTab === "active"
+                          ? "bg-blue-600 text-white"
+                          : "bg-muted text-gray-600 dark:text-gray-300"
+                      }`}
+                      onClick={() => setOrgTab("active")}
+                    >
+                      Active Organizations
+                    </button>
+                    <button
+                      className={`px-4 py-1 rounded-lg text-sm font-medium transition-colors ${
+                        orgTab === "inactive"
+                          ? "bg-blue-600 text-white"
+                          : "bg-muted text-gray-600 dark:text-gray-300"
+                      }`}
+                      onClick={() => setOrgTab("inactive")}
+                    >
+                      Inactive Organizations
+                    </button>
+                  </div>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
@@ -375,8 +461,7 @@ const SuperUserDashboard = () => {
                               </p>
                               <p className="text-sm text-muted-foreground">
                                 {tenant.users?.length || 0} users ·{" "}
-                                {recent?.enabledCourseCount ?? 0} courses (
-                                {recent?.enabledCourseCount ?? 0} enabled)
+                                {recent?.enabledCourseCount ?? 0} courses 
                               </p>
                               <span className="block text-xs text-muted-foreground">
                                 Admin: {tenant.adminEmail}
@@ -397,36 +482,32 @@ const SuperUserDashboard = () => {
                                   <Menu.Item>
                                     {({ active }) => (
                                       <button
-                                        className="px-2 py-1 rounded-xl font-semibold text-m text-white bg-red-600 hover:bg-red-700 transition flex items-center gap-1"
-                                        style={{ minWidth: 80 }}
-                                        onClick={async () => {
-                                          if (
-                                            window.confirm(
-                                              "Are you sure you want to delete this organization? This action cannot be undone."
-                                            )
-                                          ) {
-                                            try {
-                                              await superuserService.deleteTenant(
-                                                tenant.id
-                                              );
-                                              setTenants((prev) =>
-                                                prev.filter(
-                                                  (t) => t.id !== tenant.id
-                                                )
-                                              );
-                                              toast.success(
-                                                "Organization deleted successfully"
-                                              );
-                                            } catch (err) {
-                                              toast.error(
-                                                "Failed to delete organization"
-                                              );
-                                            }
-                                          }
-                                        }}
+                                        className={`px-2 py-1 rounded-xl font-semibold text-m text-white ${
+                                          orgTab === "active"
+                                            ? "bg-red-600 hover:bg-red-700"
+                                            : "bg-green-600 hover:bg-green-700"
+                                        } transition flex items-center gap-1`}
+                                        style={{ minWidth: 120 }}
+                                        onClick={() =>
+                                          handleMenuAction(
+                                            tenant,
+                                            orgTab === "active"
+                                              ? "deactivate"
+                                              : "activate"
+                                          )
+                                        }
                                       >
-                                        <Trash2 className="h-4 w-4" />
-                                        Delete
+                                        {orgTab === "active" ? (
+                                          <span className="flex items-center gap-1">
+                                            <Trash2 className="h-4 w-4" />
+                                            Deactivate
+                                          </span>
+                                        ) : (
+                                          <span className="flex items-center gap-1">
+                                            <Pencil className="h-4 w-4" />
+                                            Activate
+                                          </span>
+                                        )}
                                       </button>
                                     )}
                                   </Menu.Item>
@@ -446,6 +527,50 @@ const SuperUserDashboard = () => {
                   </div>
                 </CardContent>
               </Card>
+              {/* Confirmation Modal */}
+              <Dialog
+                open={confirmModalOpen}
+                onOpenChange={setConfirmModalOpen}
+              >
+                <DialogContent className="max-w-md">
+                  <DialogHeader>
+                    <DialogTitle>
+                      {confirmAction === "deactivate"
+                        ? "Deactivate Organization"
+                        : "Activate Organization"}
+                    </DialogTitle>
+                  </DialogHeader>
+                  <div className="py-4">
+                    <p>
+                      Are you sure you want to {confirmAction} the organization{" "}
+                      <span className="font-semibold">
+                        {selectedTenant?.name}
+                      </span>
+                      ?
+                    </p>
+                  </div>
+                  <DialogFooter>
+                    <Button
+                      variant="outline"
+                      onClick={() => setConfirmModalOpen(false)}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      className={
+                        confirmAction === "deactivate"
+                          ? "bg-red-600 hover:bg-red-700 text-white"
+                          : "bg-green-600 hover:bg-green-700 text-white"
+                      }
+                      onClick={handleConfirm}
+                    >
+                      {confirmAction === "deactivate"
+                        ? "Deactivate"
+                        : "Activate"}
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
             </TabsContent>
 
             <TabsContent value="courses" className="animate-fade-in">

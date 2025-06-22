@@ -21,6 +21,7 @@ export interface Tenant {
   name: string;
   domain: string;
   adminEmail: string;
+  isActive?: boolean;
   details?: {
     presidingOfficerEmail?: string;
     poshCommitteeEmail?: string;
@@ -51,6 +52,7 @@ export interface Tenant {
   courses?: {
     id: string;
     title: string;
+    isEnabled?: boolean;
   }[];
 }
 

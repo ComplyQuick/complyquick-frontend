@@ -209,7 +209,9 @@ const SlidePlayer = ({
 
       // Auto advance to next slide if not the last slide
       if (currentSlideIndex < slides.length - 1) {
-        handleNext();
+        setTimeout(() => {
+          handleNext();
+        }, 2000); // 2 second delay
       } else {
         // If it's the last slide, show completion state
         handleComplete();
