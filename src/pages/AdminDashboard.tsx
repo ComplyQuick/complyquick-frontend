@@ -482,6 +482,7 @@ const AdminDashboard = () => {
                         id: activity.email,
                         name: activity.name,
                         email: activity.email,
+                        role: "employee",
                         coursesCompleted: activity.totalCourses,
                         totalCourses: courses.length,
                         lastActivity: activity.status,
@@ -688,7 +689,7 @@ const AdminDashboard = () => {
                 No new courses available to add.
               </div>
             ) : (
-              availableCourses.map((course: any) => (
+              availableCourses.map((course: Course) => (
                 <div
                   key={course.id}
                   className="flex items-center space-x-2 p-4 border rounded-lg hover:bg-muted/50"

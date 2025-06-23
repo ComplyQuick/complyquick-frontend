@@ -9,8 +9,11 @@ Before you begin, ensure you have the following installed:
 - **Node.js** (v18 or higher)
 - **npm** (v9 or higher) or **bun** (v1.0 or higher)
 - **Git**
+- **Docker** (optional, for containerized deployment)
 
 ## Installation
+
+### Local Development
 
 1. **Clone the repository:**
 
@@ -50,6 +53,30 @@ bun dev
 
 5. **Access the application:**
    Open your browser and navigate to `http://localhost:7000`
+
+### Docker Deployment
+
+#### Production Build
+
+```bash
+# Build and run production container
+docker-compose up --build
+
+# Or build manually
+docker build -t quick-comply-academy .
+docker run -p 3000:3000 quick-comply-academy
+```
+
+#### Development with Docker
+
+```bash
+# Run development container with hot reload
+docker-compose --profile dev up --build
+
+# Or run manually
+docker build -f Dockerfile.dev -t quick-comply-academy-dev .
+docker run -p 7000:7000 -v $(pwd):/app quick-comply-academy-dev
+```
 
 ## Available Scripts
 
@@ -103,7 +130,13 @@ src/
    - Check browser compatibility (Chrome, Edge, Safari supported)
 
 4. **Google Drive Integration Issues**
+
    - Verify Google Drive API credentials
    - Check environment variables are properly configured
+
+5. **Docker Issues**
+   - Ensure Docker is running
+   - Check if ports 3000 or 7000 are available
+   - Clear Docker cache: `docker system prune -a`
 
 For additional support, please create an issue in the repository.

@@ -11,6 +11,16 @@ export interface Course
   tags: string[];
   targetAudience: string;
   isEnabled: boolean;
+  mandatory: boolean;
+  skippable: boolean;
+  retryType: "SAME" | "DIFFERENT";
+  pocs?: Array<{
+    id: string;
+    name: string;
+    email: string;
+    role: string;
+    contact: string;
+  }>;
 }
 
 export interface User {

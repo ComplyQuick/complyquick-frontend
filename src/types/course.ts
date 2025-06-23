@@ -131,6 +131,7 @@ export interface CourseCardProps {
       skippable: boolean;
       retryType: "DIFFERENT" | "SAME";
     };
+    pocs?: POC[];
   };
   onUpdateCourse?: () => void;
 }
