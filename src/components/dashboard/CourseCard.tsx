@@ -10,6 +10,7 @@ import {
   Trash2,
   Pencil,
   Check,
+  Star,
 } from "lucide-react";
 import {
   Tooltip,
@@ -145,6 +146,15 @@ const CourseCard = ({
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
       >
+        {/* Star for mandatory course - only show for employees */}
+        {isMandatory && userRole === "employee" && (
+          <div className="absolute top-3 right-3 z-30">
+            <Star
+              className="h-6 w-6 text-yellow-400 drop-shadow"
+              fill="#facc15"
+            />
+          </div>
+        )}
         {/* Top colored section with pattern */}
         <div
           className={`w-full ${

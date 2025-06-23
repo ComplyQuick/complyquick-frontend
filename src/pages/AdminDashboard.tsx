@@ -19,6 +19,7 @@ import {
   Loader2,
   PlusCircle,
   X,
+  Info,
 } from "lucide-react";
 import UsersList from "@/components/dashboard/UsersList";
 import CourseCard from "@/components/dashboard/CourseCard";
@@ -80,6 +81,7 @@ const AdminDashboard = () => {
   const [courseView, setCourseView] = useState<"active" | "inactive">("active");
   const [activeCourses, setActiveCourses] = useState<Course[]>([]);
   const [inactiveCourses, setInactiveCourses] = useState<Course[]>([]);
+  const [showOrgDetailsWarning, setShowOrgDetailsWarning] = useState(false);
 
   useEffect(() => {
     const storedTenantId = localStorage.getItem("tenantId");
@@ -295,6 +297,37 @@ const AdminDashboard = () => {
     fetchCoursesByStatus();
   }, [tenantId, courseView]);
 
+  const handleOpenAddCourseDialog = async () => {
+    if (!tenantId) {
+      setShowOrgDetailsWarning(true);
+      return;
+    }
+    try {
+      const details = await adminService.fetchTenantDetails(tenantId);
+      const requiredFields = [
+        "hrContactName",
+        "hrContactEmail",
+        "hrContactPhone",
+        "ceoName",
+        "ceoEmail",
+        "ceoContact",
+        "ctoName",
+        "ctoEmail",
+        "ctoContact",
+      ];
+      const missing = requiredFields.some(
+        (field) => !details[field] || String(details[field]).trim() === ""
+      );
+      if (missing) {
+        setShowOrgDetailsWarning(true);
+        return;
+      }
+      setIsAddCourseDialogOpen(true);
+    } catch (e) {
+      setShowOrgDetailsWarning(true);
+    }
+  };
+
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-background to-muted/30">
       <Navbar userRole="admin" />
@@ -495,7 +528,7 @@ const AdminDashboard = () => {
                   </span>
                 </div>
                 <Button
-                  onClick={() => setIsAddCourseDialogOpen(true)}
+                  onClick={handleOpenAddCourseDialog}
                   className="bg-complybrand-700 hover:bg-complybrand-800 text-white px-3 py-1 rounded-full text-xs shadow-sm flex items-center"
                 >
                   <PlusCircle className="mr-1 h-4 w-4" /> Add Course
@@ -702,6 +735,29 @@ const AdminDashboard = () => {
               Add Selected Courses
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={showOrgDetailsWarning}
+        onOpenChange={setShowOrgDetailsWarning}
+      >
+        <DialogContent className="max-w-md text-center">
+          <div className="flex flex-col items-center gap-4 py-6">
+            <Info className="h-12 w-12 text-blue-500 mx-auto" />
+            <div className="text-lg font-semibold">
+              Fill the organization details first to continue
+            </div>
+            <Button
+              className="mt-4 bg-blue-600 hover:bg-blue-700 text-white"
+              onClick={() => {
+                setShowOrgDetailsWarning(false);
+                setTenantDetailsDialogOpen(true);
+              }}
+            >
+              Go to Organization Details
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
 

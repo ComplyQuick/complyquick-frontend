@@ -11,7 +11,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { Award, Clock, BookOpen, Download } from "lucide-react";
+import { Award, Clock, BookOpen, Download, Star } from "lucide-react";
 import CourseCard from "@/components/dashboard/CourseCard";
 import { toast } from "sonner";
 import {
@@ -291,27 +291,33 @@ const UserDashboard = () => {
       <main className="flex-grow pt-16">
         <div className="container mx-auto px-4 py-8">
           <div className="flex flex-col lg:flex-row gap-8">
-            <div className="lg:w-1/3 w-full">
-              <Card className="animate-fade-in mt-8 shadow-lg rounded-2xl bg-white dark:bg-neutral-900 border-0 p-0 overflow-hidden">
+            <div className="w-full lg:w-1/3">
+              <div className="flex items-center gap-2 mb-2">
+                <Star className="h-5 w-5 text-yellow-400" fill="#facc15" />
+                <span className="text-sm font-semibold text-yellow-600">
+                  Mandatory
+                </span>
+              </div>
+              <Card className="animate-fade-in mt-0 shadow-lg rounded-2xl bg-white dark:bg-neutral-900 border-0 p-0 overflow-hidden">
                 <CardHeader className="pb-2 border-b border-neutral-100 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-800">
-                  <CardTitle className="text-xl font-bold text-neutral-900 dark:text-white mb-1">
+                  <CardTitle className="text-lg sm:text-xl font-bold text-neutral-900 dark:text-white mb-1">
                     Welcome back, {userProfile?.name || "Employee"}!
                   </CardTitle>
-                  <CardDescription className="text-neutral-500 dark:text-neutral-400 text-base font-medium">
+                  <CardDescription className="text-neutral-500 dark:text-neutral-400 text-sm sm:text-base font-medium">
                     Your Training Dashboard
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="py-6 px-6">
-                  <div className="mb-6 flex items-center gap-2">
+                <CardContent className="py-4 sm:py-6 px-4 sm:px-6">
+                  <div className="mb-6 flex flex-col sm:flex-row sm:items-center gap-2">
                     <span className="text-sm text-neutral-500 dark:text-neutral-400">
                       Email:
                     </span>
-                    <span className="text-base font-semibold text-neutral-900 dark:text-white">
+                    <span className="text-sm sm:text-base font-semibold text-neutral-900 dark:text-white">
                       {userProfile?.email || "Employee"}
                     </span>
                   </div>
                   <div className="space-y-4">
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
                       <span className="text-sm text-neutral-500 dark:text-neutral-400">
                         Progress Overview
                       </span>
@@ -319,7 +325,7 @@ const UserDashboard = () => {
                         value={progressView}
                         onValueChange={setProgressView}
                       >
-                        <SelectTrigger className="w-[160px] bg-neutral-100 dark:bg-neutral-800 border-0 text-neutral-700 dark:text-neutral-200">
+                        <SelectTrigger className="w-full sm:w-[160px] bg-neutral-100 dark:bg-neutral-800 border-0 text-neutral-700 dark:text-neutral-200">
                           <SelectValue placeholder="Select view" />
                         </SelectTrigger>
                         <SelectContent>
@@ -345,7 +351,8 @@ const UserDashboard = () => {
                         </div>
                         <Progress
                           value={overallProgress}
-                          className="h-2 bg-neutral-200 dark:bg-neutral-700"
+                          className="h-2 light:bg-grey-300 dark:bg-neutral-700"
+                          indicatorClassName="bg-pink-500"
                         />
                       </>
                     )}
@@ -362,6 +369,7 @@ const UserDashboard = () => {
                         <Progress
                           value={mandatoryProgress}
                           className="h-2 bg-red-200 dark:bg-red-700"
+                          indicatorClassName="bg-pink-500"
                         />
                         <div className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
                           {mandatoryCourses.length} mandatory courses
@@ -381,6 +389,7 @@ const UserDashboard = () => {
                         <Progress
                           value={nonMandatoryProgress}
                           className="h-2 bg-blue-200 dark:bg-blue-700"
+                          indicatorClassName="bg-pink-500"
                         />
                         <div className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
                           {nonMandatoryCourses.length} non-mandatory courses
@@ -427,17 +436,19 @@ const UserDashboard = () => {
               </Card>
             </div>
 
-            <div className="lg:w-3/4 animate-fade-in">
-              <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
-                <h1 className="text-2xl font-bold">Your Courses</h1>
-                <div className="mt-4 md:mt-0 flex space-x-2">
+            <div className="w-full lg:w-2/3 animate-fade-in">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
+                <h1 className="text-2xl font-bold mb-4 sm:mb-0">
+                  Your Courses
+                </h1>
+                <div className="flex-wrap flex space-x-2">
                   <Button
                     variant={activeTab === "all" ? "default" : "outline"}
                     onClick={() => setActiveTab("all")}
                     className={`transition-all duration-200 ${
                       activeTab === "all"
                         ? "bg-complybrand-700 text-white hover:bg-complybrand-800"
-                        : "hover:bg-muted/20"
+                        : "hover:bg-muted/20 hover:text-white"
                     }`}
                   >
                     All
@@ -448,7 +459,7 @@ const UserDashboard = () => {
                     className={`transition-all duration-200 ${
                       activeTab === "inProgress"
                         ? "bg-complybrand-700 text-white hover:bg-complybrand-800"
-                        : "hover:bg-muted/20"
+                        : "hover:bg-muted/20 hover:text-white"
                     }`}
                   >
                     In Progress
@@ -459,7 +470,7 @@ const UserDashboard = () => {
                     className={`transition-all duration-200 ${
                       activeTab === "completed"
                         ? "bg-complybrand-700 text-white hover:bg-complybrand-800"
-                        : "hover:bg-muted/20"
+                        : "hover:bg-muted/20 hover:text-white"
                     }`}
                   >
                     Completed
@@ -468,7 +479,7 @@ const UserDashboard = () => {
               </div>
 
               {filteredCourses.length > 0 ? (
-                <div className="grid gap-6 md:grid-cols-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                   {filteredCourses.map((course) => {
                     const progress = courseProgress[course.id] || 0;
                     const isCompleted = progress === 100;

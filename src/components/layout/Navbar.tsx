@@ -46,6 +46,7 @@ const Navbar = ({ userRole, onLogin }: NavbarProps) => {
   const [searchParams] = useSearchParams();
   const token = searchParams.get("token");
   const tenantId = searchParams.get("tenantId");
+  const error = searchParams.get("error");
   const { setAuth, clearAuth } = useAuthStore();
 
   useEffect(() => {
@@ -55,7 +56,26 @@ const Navbar = ({ userRole, onLogin }: NavbarProps) => {
       const newUrl = window.location.pathname;
       window.history.replaceState({}, "", newUrl);
     }
-  }, [token, tenantId, setAuth]);
+
+    // Handle error from Google OAuth callback
+    if (error) {
+      setErrorMessage(decodeURIComponent(error));
+      setErrorDialogOpen(true);
+      // Remove error from URL
+      const newUrl = window.location.pathname;
+      window.history.replaceState({}, "", newUrl);
+    }
+
+    // Handle other potential error parameters
+    const errorDescription = searchParams.get("error_description");
+    if (errorDescription) {
+      setErrorMessage(decodeURIComponent(errorDescription));
+      setErrorDialogOpen(true);
+      // Remove error parameters from URL
+      const newUrl = window.location.pathname;
+      window.history.replaceState({}, "", newUrl);
+    }
+  }, [token, tenantId, error, searchParams, setAuth]);
 
   const openLoginDialog = (type: "admin" | "employee") => {
     setLoginType(type);
@@ -238,16 +258,17 @@ const Navbar = ({ userRole, onLogin }: NavbarProps) => {
                       className="flex items-center space-x-1 hover:scale-105 transition-transform"
                     >
                       <LogIn className="w-4 h-4" />
-                      <span>Employee Login</span>
+                      <span>Login</span>
                     </Button>
-                    <Button
-                      variant="outline"
-                      onClick={() => openLoginDialog("admin")}
-                      className="flex items-center space-x-1 hover:scale-105 transition-transform"
-                    >
-                      <LogIn className="w-4 h-4" />
-                      <span>Admin Login</span>
-                    </Button>
+                    {/* <Link to="/admin/login">
+                      <Button
+                        variant="outline"
+                        className="flex items-center space-x-1 hover:scale-105 transition-transform"
+                      >
+                        <LogIn className="w-4 h-4" />
+                        <span>Admin Login</span>
+                      </Button>
+                    </Link> */}
                   </div>
                 )}
               </>
@@ -344,137 +365,85 @@ const Navbar = ({ userRole, onLogin }: NavbarProps) => {
         </div>
       )}
 
-      {/* Admin/Superuser Login Dialog */}
-      <Dialog
-        open={loginDialogOpen && loginType === "admin"}
-        onOpenChange={(open) => {
-          setLoginDialogOpen(open);
-          if (!open) setLoginType("employee");
-        }}
-      >
-        <DialogContent className="sm:max-w-[425px] animate-scale-in">
-          <DialogHeader>
-            <DialogTitle>Admin Login</DialogTitle>
-            <DialogDescription>
-              Enter your admin credentials to access dashboard.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                name="email"
-                type="email"
-                placeholder="admin@yourorg.com"
-                value={credentials.email}
-                onChange={handleCredentialChange}
-                autoComplete="email"
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="domain">Domain</Label>
-              <div className="flex">
-                <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 border-input bg-muted text-muted-foreground">
-                  <AtSign className="h-4 w-4" />
-                </span>
-                <Input
-                  id="domain"
-                  name="domain"
-                  type="text"
-                  placeholder="yourorg.com"
-                  value={credentials.domain}
-                  onChange={handleCredentialChange}
-                  className="rounded-l-none"
-                />
-              </div>
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                name="password"
-                type="password"
-                value={credentials.password}
-                onChange={handleCredentialChange}
-                autoComplete="current-password"
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setLoginDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button
-              onClick={() => handleLogin()}
-              className="bg-complybrand-700 hover:bg-complybrand-800 text-white"
-            >
-              Login
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Error Dialog */}
+      <Dialog open={errorDialogOpen} onOpenChange={setErrorDialogOpen}>
+        <DialogContent className="sm:max-w-[500px] error-dialog-entrance border-0 shadow-2xl bg-gradient-to-br from-red-50 to-red-100 dark:from-red-900/20 dark:to-red-800/20 backdrop-blur-sm">
+          <div className="relative">
+            {/* Background decoration */}
+            <div className="absolute inset-0 bg-gradient-to-r from-red-400/10 to-pink-400/10 rounded-lg"></div>
 
-      {/* Employee Login Dialog - Domain Step */}
-      <Dialog
-        open={
-          loginDialogOpen &&
-          loginType === "employee" &&
-          domainLoginStep === "domain"
-        }
-        onOpenChange={(open) => {
-          setLoginDialogOpen(open);
-          if (!open) {
-            setLoginType("employee");
-            setDomainLoginStep("domain");
-          }
-        }}
-      >
-        <DialogContent className="sm:max-w-[425px] animate-scale-in">
-          <DialogHeader>
-            <DialogTitle>Company Domain</DialogTitle>
-            <DialogDescription>
-              Enter your company domain to continue
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label htmlFor="domain">Company Domain</Label>
-              <div className="flex">
-                <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 border-input bg-muted text-muted-foreground">
-                  <AtSign className="h-4 w-4" />
-                </span>
-                <Input
-                  id="domain"
-                  name="domain"
-                  type="text"
-                  placeholder="company.com"
-                  value={credentials.domain}
-                  onChange={handleCredentialChange}
-                  className="rounded-l-none"
-                />
+            <DialogHeader className="relative z-10 text-center pb-4">
+              {/* Animated error icon */}
+              <div className="mx-auto mb-4 w-16 h-16 bg-gradient-to-br from-red-500 to-red-600 rounded-full flex items-center justify-center shadow-lg animate-icon-bounce hover:animate-error-shake cursor-pointer transition-all duration-300 hover:scale-110">
+                <svg
+                  className="w-8 h-8 text-white"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                    clipRule="evenodd"
+                  />
+                </svg>
               </div>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                Example: company.com, organization.org
-              </p>
+
+              <DialogTitle className="text-2xl font-bold text-red-700 dark:text-red-300 mb-2 animate-slide-in-error">
+                Access Denied
+              </DialogTitle>
+
+              <DialogDescription
+                className="text-base text-gray-700 dark:text-gray-300 leading-relaxed max-w-md mx-auto animate-slide-in-error"
+                style={{ animationDelay: "0.1s" }}
+              >
+                {errorMessage}
+              </DialogDescription>
+            </DialogHeader>
+
+            {/* Additional info section */}
+            <div
+              className="relative z-10 bg-white/50 dark:bg-gray-800/50 rounded-lg p-4 mb-6 border border-red-200 dark:border-red-700/30 animate-slide-in-error hover:bg-white/70 dark:hover:bg-gray-800/70 transition-all duration-300"
+              style={{ animationDelay: "0.2s" }}
+            >
+              <div className="flex items-start space-x-3">
+                <div className="flex-shrink-0 w-6 h-6 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center animate-pulse-soft">
+                  <svg
+                    className="w-4 h-4 text-blue-600 dark:text-blue-400"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">
+                    Need Help?
+                  </p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    Contact your organization's administrator or reach out to
+                    our support team for assistance.
+                  </p>
+                </div>
+              </div>
             </div>
-          </div>
-          <DialogFooter className="flex flex-col sm:flex-row sm:justify-between gap-2">
-            <div className="flex flex-col sm:flex-row gap-2">
+
+            <DialogFooter
+              className="relative z-10 flex flex-col sm:flex-row gap-3 animate-slide-in-error"
+              style={{ animationDelay: "0.3s" }}
+            >
               <Button
                 variant="outline"
-                onClick={() => setLoginDialogOpen(false)}
+                onClick={() => setErrorDialogOpen(false)}
+                className="flex-1 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all duration-200 hover:scale-105"
               >
-                Cancel
+                Close
               </Button>
-              <Button
-                onClick={handleDomainSubmit}
-                className="bg-complybrand-700 hover:bg-complybrand-800"
-              >
-                Continue
-              </Button>
-            </div>
-          </DialogFooter>
+            </DialogFooter>
+          </div>
         </DialogContent>
       </Dialog>
     </nav>

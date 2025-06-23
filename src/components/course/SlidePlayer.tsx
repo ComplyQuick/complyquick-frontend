@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import SlideControls from "./SlideControls";
 import SlideNavigation from "./SlideNavigation";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -102,7 +102,6 @@ const SlidePlayer = ({
         if (!courseId || !tenantId) {
           throw new Error("Missing courseId or tenantId");
         }
-
         // First fetch course details to get materialUrl
         const courseData = await slideService.fetchCourseDetails(tenantId);
 
@@ -110,14 +109,19 @@ const SlidePlayer = ({
         const currentCourse = courseData.find(
           (course) => course.id === courseId
         );
+
         if (!currentCourse) {
           throw new Error("Current course not found");
         }
+
         // Update the material URL state
         if (currentCourse.materialUrl) {
+          console.log(
+            "Fetched materialUrl from DB:",
+            currentCourse.materialUrl
+          );
           setMaterialUrl(currentCourse.materialUrl);
         }
-
         const explanations = await slideService.fetchExplanations(
           courseId,
           tenantId
@@ -140,6 +144,7 @@ const SlidePlayer = ({
           }
         }
       } catch (error) {
+        console.error("Error in fetchExplanations:", error);
         toast.error("Failed to load slide explanations");
       }
     };
@@ -163,6 +168,135 @@ const SlidePlayer = ({
       }
     }
   }, [currentSlideIndex, slideExplanations]);
+
+  const handleComplete = useCallback(async () => {
+    if (isAdminView) {
+      // For admin view, just mark all slides as completed and show modal
+      const updatedSlides = slides.map((slide) => ({
+        ...slide,
+        completed: true,
+      }));
+      setSlides(updatedSlides);
+      setShowAdminCompleteModal(true);
+      onComplete();
+      return;
+    }
+    if (!isLastSlide && overallProgress < 80) {
+      toast.error(
+        "You need to complete at least 80% of the course to proceed."
+      );
+      return;
+    }
+
+    try {
+      const tenantId = localStorage.getItem("tenantId");
+      const token = localStorage.getItem("token");
+      if (!courseId || !tenantId || !token) {
+        throw new Error("Missing required parameters");
+      }
+
+      await slideService.updateProgress(
+        courseId,
+        tenantId,
+        token,
+        100,
+        currentSlideIndex + 1
+      );
+
+      setShowCompletionModal(true);
+      // Pause playback on last slide after completion
+      setIsPlaying(false);
+      if (audioRef.current) {
+        audioRef.current.pause();
+      }
+    } catch (error) {
+      toast.error("Failed to complete course");
+    }
+  }, [
+    isAdminView,
+    slides,
+    setSlides,
+    onComplete,
+    isLastSlide,
+    overallProgress,
+    courseId,
+    currentSlideIndex,
+    setIsPlaying,
+  ]);
+
+  const handleNext = useCallback(async () => {
+    if (isAdminView) {
+      // For admin view, just move to next slide without restrictions
+      if (currentSlideIndex < slides.length - 1) {
+        onSlideChange(currentSlideIndex + 1);
+      } else {
+        handleComplete();
+      }
+      return;
+    }
+
+    // Original next slide logic for user view
+    if (!canAdvance && !properties?.skippable) {
+      toast.error("Please complete the current slide before proceeding.");
+      return;
+    }
+
+    if (currentSlideIndex < slides.length - 1) {
+      // Update current slide as completed
+      const updatedSlides = [...slides];
+      updatedSlides[currentSlideIndex] = {
+        ...updatedSlides[currentSlideIndex],
+        completed: true,
+      };
+      setSlides(updatedSlides);
+
+      // Calculate and update progress
+      const totalCompleted = updatedSlides.filter(
+        (slide) => slide.completed
+      ).length;
+      const progress = (totalCompleted / slides.length) * 100;
+
+      try {
+        const tenantId = localStorage.getItem("tenantId");
+        const token = localStorage.getItem("token");
+        if (!courseId || !tenantId || !token) {
+          throw new Error("Missing required parameters");
+        }
+
+        await slideService.updateProgress(
+          courseId,
+          tenantId,
+          token,
+          progress,
+          currentSlideIndex + 1
+        );
+
+        // Move to next slide
+        const nextIndex = currentSlideIndex + 1;
+        onSlideChange(nextIndex);
+        setMaxVisitedSlide(Math.max(maxVisitedSlide, nextIndex));
+      } catch (error) {
+        console.error("Error updating progress:", error);
+        toast.error(
+          error instanceof Error ? error.message : "Failed to update progress"
+        );
+      }
+    } else {
+      handleComplete();
+    }
+  }, [
+    isAdminView,
+    currentSlideIndex,
+    slides,
+    onSlideChange,
+    handleComplete,
+    canAdvance,
+    properties,
+    setSlides,
+    courseId,
+    setMaxVisitedSlide,
+    maxVisitedSlide,
+  ]);
 
   // Initialize audio element
   useEffect(() => {
@@ -209,7 +343,9 @@ const SlidePlayer = ({
 
       // Auto advance to next slide if not the last slide
       if (currentSlideIndex < slides.length - 1) {
-        handleNext();
+        setTimeout(() => {
+          handleNext();
+        }, 2000); // 2 second delay
       } else {
         // If it's the last slide, show completion state
         handleComplete();
@@ -231,7 +367,14 @@ const SlidePlayer = ({
       audio.removeEventListener("play", () => {});
       audio.removeEventListener("pause", () => {});
     };
-  }, [currentSlideIndex, slideExplanations]);
+  }, [
+    currentSlideIndex,
+    slideExplanations,
+    canAdvance,
+    slides.length,
+    handleComplete,
+    handleNext,
+  ]);
 
   // Update audio source when explanation changes
   useEffect(() => {
@@ -344,52 +487,38 @@ const SlidePlayer = ({
     setShowSubtitles(!showSubtitles);
   };
 
-  const handleComplete = async () => {
-    if (isAdminView) {
-      // For admin view, just mark all slides as completed and show modal
-      const updatedSlides = slides.map((slide) => ({
-        ...slide,
-        completed: true,
-      }));
-      setSlides(updatedSlides);
-      setShowAdminCompleteModal(true);
-      onComplete();
-      return;
-    }
-    if (!isLastSlide && overallProgress < 80) {
-      toast.error(
-        "You need to complete at least 80% of the course to proceed."
-      );
-      return;
-    }
-
-    try {
-      const tenantId = localStorage.getItem("tenantId");
-      const token = localStorage.getItem("token");
-      if (!courseId || !tenantId || !token) {
-        throw new Error("Missing required parameters");
-      }
-
-      await slideService.updateProgress(
-        courseId,
-        tenantId,
-        token,
-        100,
-        currentSlideIndex + 1
-      );
-
-      setShowCompletionModal(true);
-      // Pause playback on last slide after completion
-      setIsPlaying(false);
-      if (audioRef.current) {
-        audioRef.current.pause();
-      }
-    } catch (error) {
-      toast.error("Failed to complete course");
+  const handleFullScreen = () => {
+    const el = slideAreaRef.current;
+    if (!el) return;
+    if (document.fullscreenElement) {
+      document.exitFullscreen();
+    } else {
+      el.requestFullscreen();
     }
   };
 
-  const handleStartAssessment = async () => {
+  // Show controls on mouse move, hide after 2s
+  const handleSlideAreaMouseMove = () => {
+    setControlsVisible(true);
+    if (controlsTimeoutRef.current) {
+      clearTimeout(controlsTimeoutRef.current);
+    }
+    controlsTimeoutRef.current = setTimeout(() => {
+      setControlsVisible(false);
+    }, 2000);
+  };
+
+  useEffect(() => {
+    return () => {
+      // Abort MCQ generation if navigating away
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+      setIsGeneratingMCQ(false);
+    };
+  }, []);
+
+  const handleStartAssessment = useCallback(async () => {
     if (isAdminView) return;
     try {
       setIsGeneratingMCQ(true);
@@ -441,106 +570,13 @@ const SlidePlayer = ({
       }
       setIsGeneratingMCQ(false);
     }
-  };
+  }, [isAdminView, courseId]);
 
-  const handlePrev = () => {
+  const handlePrev = useCallback(() => {
     if (currentSlideIndex > 0) {
       onSlideChange(currentSlideIndex - 1);
     }
-  };
-
-  const handleNext = async () => {
-    if (isAdminView) {
-      // For admin view, just move to next slide without restrictions
-      if (currentSlideIndex < slides.length - 1) {
-        onSlideChange(currentSlideIndex + 1);
-      } else {
-        handleComplete();
-      }
-      return;
-    }
-
-    // Original next slide logic for user view
-    if (!canAdvance && !properties?.skippable) {
-      toast.error("Please complete the current slide before proceeding.");
-      return;
-    }
-
-    if (currentSlideIndex < slides.length - 1) {
-      // Update current slide as completed
-      const updatedSlides = [...slides];
-      updatedSlides[currentSlideIndex] = {
-        ...updatedSlides[currentSlideIndex],
-        completed: true,
-      };
-      setSlides(updatedSlides);
-
-      // Calculate and update progress
-      const totalCompleted = updatedSlides.filter(
-        (slide) => slide.completed
-      ).length;
-      const progress = (totalCompleted / slides.length) * 100;
-
-      try {
-        const tenantId = localStorage.getItem("tenantId");
-        const token = localStorage.getItem("token");
-        if (!courseId || !tenantId || !token) {
-          throw new Error("Missing required parameters");
-        }
-
-        await slideService.updateProgress(
-          courseId,
-          tenantId,
-          token,
-          progress,
-          currentSlideIndex + 1
-        );
-
-        // Move to next slide
-        const nextIndex = currentSlideIndex + 1;
-        onSlideChange(nextIndex);
-        setMaxVisitedSlide(Math.max(maxVisitedSlide, nextIndex));
-      } catch (error) {
-        console.error("Error updating progress:", error);
-        toast.error(
-          error instanceof Error ? error.message : "Failed to update progress"
-        );
-      }
-    } else {
-      handleComplete();
-    }
-  };
-
-  const handleFullScreen = () => {
-    const el = slideAreaRef.current;
-    if (!el) return;
-    if (document.fullscreenElement) {
-      document.exitFullscreen();
-    } else {
-      el.requestFullscreen();
-    }
-  };
-
-  // Show controls on mouse move, hide after 2s
-  const handleSlideAreaMouseMove = () => {
-    setControlsVisible(true);
-    if (controlsTimeoutRef.current) {
-      clearTimeout(controlsTimeoutRef.current);
-    }
-    controlsTimeoutRef.current = setTimeout(() => {
-      setControlsVisible(false);
-    }, 2000);
-  };
-
-  useEffect(() => {
-    return () => {
-      // Abort MCQ generation if navigating away
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
-      setIsGeneratingMCQ(false);
-    };
-  }, []);
+  }, [currentSlideIndex, onSlideChange]);
 
   if (isGeneratingMCQ) {
     return (

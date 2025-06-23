@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   Card,
@@ -141,14 +141,24 @@ const QuizResults = () => {
         // Fetch course details to get materialUrl
         const courses = await userService.fetchCourseDetails(tenantId, token);
         const course = courses.find((c) => c.id === courseIdFinal);
-        if (!course || !course.materialUrl) {
+        if (!course) {
+          toast.error("Course not found for MCQ generation.");
+          return;
+        }
+
+        // Fetch course material URL separately
+        const courseMaterial = await userService.fetchCourseMaterial(
+          courseIdFinal,
+          tenantId
+        );
+        if (!courseMaterial.materialUrl) {
           toast.error("Course material not found for MCQ generation.");
           return;
         }
 
         // Generate new MCQs
         const mcqData = await userService.generateMCQs(
-          course.materialUrl,
+          courseMaterial.materialUrl,
           courseIdFinal,
           tenantId
         );
@@ -165,7 +175,7 @@ const QuizResults = () => {
   };
 
   // Function to handle certificate upload
-  const handleCertificateUpload = async () => {
+  const handleCertificateUpload = useCallback(async () => {
     if (certificateRef.current && score >= 70) {
       try {
         const html2canvas = (await import("html2canvas")).default;
@@ -223,7 +233,7 @@ const QuizResults = () => {
         console.error("Error uploading certificate:", error);
       }
     }
-  };
+  }, [score, userName, courseName, courseIdFinal]);
 
   // Upload certificate when quiz is passed and userName/courseName are loaded
   useEffect(() => {
@@ -237,7 +247,7 @@ const QuizResults = () => {
     ) {
       handleCertificateUpload();
     }
-  }, [score, certificateUrl, userName, courseName]);
+  }, [score, certificateUrl, userName, courseName, handleCertificateUpload]);
 
   if (loading) {
     return (
@@ -299,7 +309,11 @@ const QuizResults = () => {
                   <div className="text-4xl font-bold mb-2">
                     {score.toFixed(0)}%
                   </div>
-                  <Progress value={score} className="h-2" />
+                  <Progress
+                    value={score}
+                    className="h-2.5 bg-pink-100 rounded-full"
+                    indicatorClassName="bg-green-400 transition-all duration-500 rounded-full"
+                  />
                   <div className="mt-2 text-sm text-muted-foreground">
                     {score >= 70 ? (
                       <div className="flex items-center justify-center text-green-600">
@@ -341,7 +355,7 @@ const QuizResults = () => {
                   {certificateUrl ? (
                     <span className="mt-2 block">
                       <span className="text-green-600 block">
-                        Certificate uploaded successfully!
+                        Certificate can be downloaded successfully!
                       </span>
                       <a
                         href={certificateUrl}

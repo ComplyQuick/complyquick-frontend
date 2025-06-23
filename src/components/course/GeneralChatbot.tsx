@@ -14,9 +14,7 @@ import {
   X,
 } from "lucide-react";
 import { toast } from "sonner";
-import SpeechRecognition, {
-  useSpeechRecognition,
-} from "react-speech-recognition";
+import { useSpeechRecognition } from "@/hooks/useSpeechRecognition";
 import { useSearchParams } from "react-router-dom";
 import {
   ChatMessage,
@@ -58,6 +56,8 @@ const GeneralChatbot = ({
     listening,
     resetTranscript,
     browserSupportsSpeechRecognition,
+    startListening: startSpeechRecognition,
+    stopListening: stopSpeechRecognition,
   } = useSpeechRecognition();
 
   // Set initial selected course from URL or prop
@@ -137,13 +137,13 @@ const GeneralChatbot = ({
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const startListening = () => {
+  const handleStartListening = () => {
     resetTranscript();
-    SpeechRecognition.startListening({ continuous: true });
+    startSpeechRecognition();
   };
 
-  const stopListening = () => {
-    SpeechRecognition.stopListening();
+  const handleStopListening = () => {
+    stopSpeechRecognition();
     if (transcript) setInput(transcript);
   };
 
@@ -313,7 +313,7 @@ const GeneralChatbot = ({
             <Button
               variant="outline"
               size="icon"
-              onClick={listening ? stopListening : startListening}
+              onClick={listening ? handleStopListening : handleStartListening}
               disabled={
                 isLoading ||
                 (selectedCourse && (!courseMaterial || !tenantDetails))

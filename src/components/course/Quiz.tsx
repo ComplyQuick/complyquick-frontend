@@ -195,7 +195,15 @@ const Quiz = () => {
             >
               {Object.entries(currentMcq.choices).map(([key, value]) => (
                 <div key={key} className="flex items-center space-x-2">
-                  <RadioGroupItem value={key} id={`option-${key}`} />
+                  <RadioGroupItem
+                    value={key}
+                    id={`option-${key}`}
+                    className={
+                      answers[currentQuestion] === key
+                        ? "border-pink-500 text-pink-500 ring-pink-200"
+                        : "border-gray-400 text-gray-400"
+                    }
+                  />
                   <Label htmlFor={`option-${key}`} className="text-base">
                     {value}
                   </Label>
@@ -239,7 +247,7 @@ const Quiz = () => {
             <Button
               onClick={handleSubmit}
               disabled={Object.keys(answers).length !== mcqs.length}
-              className="bg-green-600 hover:bg-green-700"
+              className="bg-green-600 hover:bg-green-700 text-white"
             >
               Submit Quiz
             </Button>
@@ -251,9 +259,15 @@ const Quiz = () => {
             {mcqs.map((_, index) => (
               <div
                 key={index}
-                className={`w-3 h-3 rounded-full ${
-                  answers[index] ? "bg-blue-500" : "bg-gray-300"
-                }`}
+                className={`w-3 h-3 rounded-full transition-colors duration-200
+                  ${
+                    currentQuestion === index
+                      ? "bg-pink-500"
+                      : answers[index]
+                      ? "bg-blue-600"
+                      : "bg-gray-400"
+                  }
+                `}
               />
             ))}
           </div>

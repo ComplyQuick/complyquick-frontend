@@ -59,14 +59,14 @@ const SlideControls = ({
             onClick={handlePrev}
             disabled={isFirstSlide}
           >
-            <SkipBack className="h-4 w-4" />
+            <SkipBack className="h-4 w-4 text-white" />
           </Button>
 
           <Button variant="ghost" size="icon" onClick={togglePlayback}>
             {isPlaying ? (
-              <Pause className="h-4 w-4" />
+              <Pause className="h-4 w-4 text-white" />
             ) : (
-              <Play className="h-4 w-4" />
+              <Play className="h-4 w-4 text-white" />
             )}
           </Button>
 
@@ -76,15 +76,15 @@ const SlideControls = ({
             onClick={handleNextClick}
             disabled={!isAdminView && !canAdvance}
           >
-            <SkipForward className="h-4 w-4" />
+            <SkipForward className="h-4 w-4 text-white" />
           </Button>
 
           <div className="flex items-center space-x-2">
             <Button variant="ghost" size="icon" onClick={toggleMute}>
               {isMuted ? (
-                <VolumeX className="h-4 w-4" />
+                <VolumeX className="h-4 w-4 text-white" />
               ) : (
-                <Volume2 className="h-4 w-4" />
+                <Volume2 className="h-4 w-4 text-white" />
               )}
             </Button>
             <div className="w-24">
@@ -102,7 +102,7 @@ const SlideControls = ({
         <div className="flex items-center space-x-4">
           {/* Playback Speed Dropdown */}
           <div className="relative flex items-center">
-            <span className="mr-2 text-xs text-gray-500">Speed</span>
+            <span className="mr-2 text-xs text-white">Speed</span>
             <div className="relative">
               <select
                 value={playbackRate}
@@ -128,7 +128,9 @@ const SlideControls = ({
             aria-label="Toggle Subtitles"
           >
             <Subtitles
-              className={`h-5 w-5 ${showSubtitles ? "text-blue-500" : ""}`}
+              className={`h-5 w-5 text-white ${
+                showSubtitles ? "text-blue-500" : ""
+              }`}
             />
           </Button>
           {/* Full Screen Button */}
@@ -138,7 +140,7 @@ const SlideControls = ({
             onClick={onFullScreen}
             aria-label="Full Screen"
           >
-            <Maximize className="h-5 w-5" />
+            <Maximize className="h-5 w-5 text-white" />
           </Button>
         </div>
       </div>
