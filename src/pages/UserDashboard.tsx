@@ -291,8 +291,7 @@ const UserDashboard = () => {
       <main className="flex-grow pt-16">
         <div className="container mx-auto px-4 py-8">
           <div className="flex flex-col lg:flex-row gap-8">
-            <div className="lg:w-1/3 w-full">
-              {/* Mandatory Star and Label */}
+            <div className="w-full lg:w-1/3">
               <div className="flex items-center gap-2 mb-2">
                 <Star className="h-5 w-5 text-yellow-400" fill="#facc15" />
                 <span className="text-sm font-semibold text-yellow-600">
@@ -301,24 +300,24 @@ const UserDashboard = () => {
               </div>
               <Card className="animate-fade-in mt-0 shadow-lg rounded-2xl bg-white dark:bg-neutral-900 border-0 p-0 overflow-hidden">
                 <CardHeader className="pb-2 border-b border-neutral-100 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-800">
-                  <CardTitle className="text-xl font-bold text-neutral-900 dark:text-white mb-1">
+                  <CardTitle className="text-lg sm:text-xl font-bold text-neutral-900 dark:text-white mb-1">
                     Welcome back, {userProfile?.name || "Employee"}!
                   </CardTitle>
-                  <CardDescription className="text-neutral-500 dark:text-neutral-400 text-base font-medium">
+                  <CardDescription className="text-neutral-500 dark:text-neutral-400 text-sm sm:text-base font-medium">
                     Your Training Dashboard
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="py-6 px-6">
-                  <div className="mb-6 flex items-center gap-2">
+                <CardContent className="py-4 sm:py-6 px-4 sm:px-6">
+                  <div className="mb-6 flex flex-col sm:flex-row sm:items-center gap-2">
                     <span className="text-sm text-neutral-500 dark:text-neutral-400">
                       Email:
                     </span>
-                    <span className="text-base font-semibold text-neutral-900 dark:text-white">
+                    <span className="text-sm sm:text-base font-semibold text-neutral-900 dark:text-white">
                       {userProfile?.email || "Employee"}
                     </span>
                   </div>
                   <div className="space-y-4">
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
                       <span className="text-sm text-neutral-500 dark:text-neutral-400">
                         Progress Overview
                       </span>
@@ -326,7 +325,7 @@ const UserDashboard = () => {
                         value={progressView}
                         onValueChange={setProgressView}
                       >
-                        <SelectTrigger className="w-[160px] bg-neutral-100 dark:bg-neutral-800 border-0 text-neutral-700 dark:text-neutral-200">
+                        <SelectTrigger className="w-full sm:w-[160px] bg-neutral-100 dark:bg-neutral-800 border-0 text-neutral-700 dark:text-neutral-200">
                           <SelectValue placeholder="Select view" />
                         </SelectTrigger>
                         <SelectContent>
@@ -437,10 +436,12 @@ const UserDashboard = () => {
               </Card>
             </div>
 
-            <div className="lg:w-3/4 animate-fade-in">
-              <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
-                <h1 className="text-2xl font-bold">Your Courses</h1>
-                <div className="mt-4 md:mt-0 flex space-x-2">
+            <div className="w-full lg:w-2/3 animate-fade-in">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
+                <h1 className="text-2xl font-bold mb-4 sm:mb-0">
+                  Your Courses
+                </h1>
+                <div className="flex-wrap flex space-x-2">
                   <Button
                     variant={activeTab === "all" ? "default" : "outline"}
                     onClick={() => setActiveTab("all")}
@@ -478,7 +479,7 @@ const UserDashboard = () => {
               </div>
 
               {filteredCourses.length > 0 ? (
-                <div className="grid gap-6 md:grid-cols-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                   {filteredCourses.map((course) => {
                     const progress = courseProgress[course.id] || 0;
                     const isCompleted = progress === 100;

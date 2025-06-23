@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   Card,
@@ -175,7 +175,7 @@ const QuizResults = () => {
   };
 
   // Function to handle certificate upload
-  const handleCertificateUpload = async () => {
+  const handleCertificateUpload = useCallback(async () => {
     if (certificateRef.current && score >= 70) {
       try {
         const html2canvas = (await import("html2canvas")).default;
@@ -233,7 +233,7 @@ const QuizResults = () => {
         console.error("Error uploading certificate:", error);
       }
     }
-  };
+  }, [score, userName, courseName, courseIdFinal]);
 
   // Upload certificate when quiz is passed and userName/courseName are loaded
   useEffect(() => {
@@ -247,7 +247,7 @@ const QuizResults = () => {
     ) {
       handleCertificateUpload();
     }
-  }, [score, certificateUrl, userName, courseName]);
+  }, [score, certificateUrl, userName, courseName, handleCertificateUpload]);
 
   if (loading) {
     return (

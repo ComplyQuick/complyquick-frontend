@@ -5,9 +5,7 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Loader2, Send, Mic, MicOff } from "lucide-react";
 import { toast } from "sonner";
-import SpeechRecognition, {
-  useSpeechRecognition,
-} from "react-speech-recognition";
+import { useSpeechRecognition } from "@/hooks/useSpeechRecognition";
 import {
   ChatMessage,
   TenantDetails,
@@ -37,6 +35,8 @@ const ChatHelp = ({ slideTitle, slideContent, tenantId }: ChatHelpProps) => {
     listening,
     resetTranscript,
     browserSupportsSpeechRecognition,
+    startListening: startSpeechRecognition,
+    stopListening: stopSpeechRecognition,
   } = useSpeechRecognition();
 
   useEffect(() => {
@@ -102,13 +102,13 @@ const ChatHelp = ({ slideTitle, slideContent, tenantId }: ChatHelpProps) => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const startListening = () => {
+  const handleStartListening = () => {
     resetTranscript();
-    SpeechRecognition.startListening({ continuous: true });
+    startSpeechRecognition();
   };
 
-  const stopListening = () => {
-    SpeechRecognition.stopListening();
+  const handleStopListening = () => {
+    stopSpeechRecognition();
     if (transcript) {
       setInput(transcript);
     }
@@ -206,7 +206,7 @@ const ChatHelp = ({ slideTitle, slideContent, tenantId }: ChatHelpProps) => {
             <Button
               variant="outline"
               size="icon"
-              onClick={listening ? stopListening : startListening}
+              onClick={listening ? handleStopListening : handleStartListening}
               disabled={isLoading}
             >
               {listening ? (

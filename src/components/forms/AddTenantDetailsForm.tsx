@@ -47,6 +47,11 @@ const tenantDetailsSchema = z.object({
 
 type TenantDetailsFormValues = z.infer<typeof tenantDetailsSchema>;
 
+// Type for API response that can be either nested or direct
+type TenantDetailsResponse =
+  | TenantDetailsFormValues
+  | { details: TenantDetailsFormValues };
+
 const AddTenantDetailsForm = ({
   open,
   onOpenChange,
@@ -75,29 +80,38 @@ const AddTenantDetailsForm = ({
   useEffect(() => {
     const fetchExistingDetails = async () => {
       if (!tenantId) return;
+      setIsLoading(true);
       try {
-        const response = await adminService.fetchTenantDetails(tenantId);
-        console.log("Fetched tenant details:", response);
-        if (response) {
-          setExistingDetails(response.details);
-          form.reset(response.details);
+        const response = (await adminService.fetchTenantDetails(
+          tenantId
+        )) as TenantDetailsResponse;
+        // The backend might return the details directly or nested under a "details" property.
+        // This handles both cases.
+        const details = "details" in response ? response.details : response;
+        if (details && Object.keys(details).length > 0) {
+          setExistingDetails(details);
+          form.reset(details);
+        } else {
+          setExistingDetails({});
         }
       } catch (error) {
         console.error("Error fetching tenant details:", error);
+        setExistingDetails(null);
+      } finally {
+        setIsLoading(false);
       }
     };
+
     if (open) {
       fetchExistingDetails();
-      setEditMode(false); // Always start in view mode
+      setEditMode(false);
     }
   }, [tenantId, form, open]);
 
-  // Helper to check if any field in existingDetails is non-empty
-  const hasAnyDetails =
-    existingDetails &&
-    Object.values(existingDetails).some(
-      (val) => val && String(val).trim() !== ""
-    );
+  // Helper to check if any field in details is non-empty
+  const hasDetails = (details: TenantDetailsFormValues | null): boolean => {
+    return !!details && Object.values(details).some((val) => !!val);
+  };
 
   async function onSubmit(data: TenantDetailsFormValues) {
     setIsLoading(true);
@@ -110,10 +124,14 @@ const AddTenantDetailsForm = ({
       toast.success("Tenant details saved successfully!");
       setEditMode(false);
       // Refresh details
-      const response = await adminService.fetchTenantDetails(storedTenantId);
-      if (response) {
-        setExistingDetails(response.details);
-        form.reset(response.details);
+      const response = (await adminService.fetchTenantDetails(
+        storedTenantId
+      )) as TenantDetailsResponse;
+      const refreshedDetails =
+        "details" in response ? response.details : response;
+      if (refreshedDetails) {
+        setExistingDetails(refreshedDetails);
+        form.reset(refreshedDetails);
       }
     } catch (error) {
       console.error("Error saving tenant details:", error);
@@ -151,8 +169,10 @@ const AddTenantDetailsForm = ({
           </DialogDescription>
         </DialogHeader>
 
-        {!editMode ? (
-          hasAnyDetails ? (
+        {isLoading ? (
+          <div className="py-8 text-center">Loading details...</div>
+        ) : !editMode ? (
+          hasDetails(existingDetails) ? (
             <div className="space-y-8 py-4">
               <div className="grid gap-6 md:grid-cols-2">
                 <div className="space-y-4">
@@ -160,15 +180,15 @@ const AddTenantDetailsForm = ({
                   <div className="h-px bg-border mb-2" />
                   <div>
                     <span className="font-medium">Name:</span>{" "}
-                    {existingDetails.hrContactName || "-"}
+                    {existingDetails?.hrContactName || "-"}
                   </div>
                   <div>
                     <span className="font-medium">Email:</span>{" "}
-                    {existingDetails.hrContactEmail || "-"}
+                    {existingDetails?.hrContactEmail || "-"}
                   </div>
                   <div>
                     <span className="font-medium">Phone:</span>{" "}
-                    {existingDetails.hrContactPhone || "-"}
+                    {existingDetails?.hrContactPhone || "-"}
                   </div>
                 </div>
                 <div className="space-y-4">
@@ -176,34 +196,34 @@ const AddTenantDetailsForm = ({
                   <div className="h-px bg-border mb-2" />
                   <div>
                     <span className="font-medium">CEO Name:</span>{" "}
-                    {existingDetails.ceoName || "-"}
+                    {existingDetails?.ceoName || "-"}
                   </div>
                   <div>
                     <span className="font-medium">CEO Email:</span>{" "}
-                    {existingDetails.ceoEmail || "-"}
+                    {existingDetails?.ceoEmail || "-"}
                   </div>
                   <div>
                     <span className="font-medium">CEO Contact:</span>{" "}
-                    {existingDetails.ceoContact || "-"}
+                    {existingDetails?.ceoContact || "-"}
                   </div>
                   <div>
                     <span className="font-medium">CTO Name:</span>{" "}
-                    {existingDetails.ctoName || "-"}
+                    {existingDetails?.ctoName || "-"}
                   </div>
                   <div>
                     <span className="font-medium">CTO Email:</span>{" "}
-                    {existingDetails.ctoEmail || "-"}
+                    {existingDetails?.ctoEmail || "-"}
                   </div>
                   <div>
                     <span className="font-medium">CTO Contact:</span>{" "}
-                    {existingDetails.ctoContact || "-"}
+                    {existingDetails?.ctoContact || "-"}
                   </div>
                 </div>
               </div>
             </div>
           ) : (
             <div className="py-8 text-center text-muted-foreground">
-              No details found.
+              No details found. Click the edit icon above to add them.
             </div>
           )
         ) : (

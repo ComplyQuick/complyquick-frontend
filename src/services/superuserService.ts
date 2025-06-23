@@ -158,7 +158,6 @@ export const superuserService = {
    * Fetch all active tenants
    */
   async getActiveTenants() {
-    console.log("Fetching active tenants...");
     const response = await fetch(
       `${BACKEND_URL}/api/superadmin/tenants/active`
     );
@@ -166,7 +165,6 @@ export const superuserService = {
       throw new Error("Failed to fetch active tenants");
     }
     const data = await response.json();
-    console.log("Active tenants:", data);
     return data;
   },
 
@@ -174,7 +172,6 @@ export const superuserService = {
    * Fetch all inactive tenants
    */
   async getInactiveTenants() {
-    console.log("Fetching inactive tenants...");
     const response = await fetch(
       `${BACKEND_URL}/api/superadmin/tenants/inactive`
     );
@@ -182,7 +179,6 @@ export const superuserService = {
       throw new Error("Failed to fetch inactive tenants");
     }
     const data = await response.json();
-    console.log("Inactive tenants:", data);
     return data;
   },
 
@@ -190,7 +186,6 @@ export const superuserService = {
    * Inactivate (deactivate) a tenant
    */
   async inactivateTenant(tenantId) {
-    console.log("Inactivating tenant:", tenantId);
     const response = await fetch(
       `${BACKEND_URL}/api/superadmin/tenants/${tenantId}/inactivate`,
       {
@@ -202,7 +197,6 @@ export const superuserService = {
       throw new Error("Failed to inactivate tenant");
     }
     const data = await response.json();
-    console.log("Tenant inactivated:", data);
     return data;
   },
 
@@ -210,7 +204,6 @@ export const superuserService = {
    * Activate a tenant
    */
   async activateTenant(tenantId) {
-    console.log("Activating tenant:", tenantId);
     const response = await fetch(
       `${BACKEND_URL}/api/superadmin/tenants/${tenantId}/activate`,
       {
@@ -222,7 +215,6 @@ export const superuserService = {
       throw new Error("Failed to activate tenant");
     }
     const data = await response.json();
-    console.log("Tenant activated:", data);
     return data;
   },
 };

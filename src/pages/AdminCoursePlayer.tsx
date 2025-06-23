@@ -35,6 +35,10 @@ const AdminCoursePlayer = () => {
   const [initialExplanations, setInitialExplanations] = useState<Explanation[]>(
     []
   );
+  const [editingSlideIndex, setEditingSlideIndex] = useState<number | null>(
+    null
+  );
+  const [editedExplanation, setEditedExplanation] = useState("");
 
   const resumeSlideRef = useRef(0);
 
@@ -113,6 +117,7 @@ const AdminCoursePlayer = () => {
 
   const handleSlideChange = (index: number) => {
     setCurrentSlideIndex(index);
+    setEditingSlideIndex(null);
   };
 
   const handleCourseComplete = () => {
@@ -192,9 +197,61 @@ const AdminCoursePlayer = () => {
     showDismissibleToast("Reverted to original explanation!");
   };
 
-  const handleApproveExplanation = async () => {
+  const handleDoubleClickExplanation = () => {
+    const currentExplanation = explanations.find(
+      (exp) => exp.slide === currentSlideIndex + 1
+    )?.explanation;
+    if (currentExplanation !== undefined) {
+      setEditingSlideIndex(currentSlideIndex);
+      setEditedExplanation(currentExplanation);
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setEditingSlideIndex(null);
+    setEditedExplanation("");
+  };
+
+  const handleSaveLocalExplanation = () => {
+    if (editingSlideIndex === null) return;
+
+    const updatedExplanations = explanations.map((exp, index) => {
+      if (index === editingSlideIndex) {
+        return {
+          ...exp,
+          explanation: editedExplanation,
+          isApproved: false,
+        };
+      }
+      return exp;
+    });
+
+    setExplanations(updatedExplanations);
+    saveHistory(updatedExplanations[editingSlideIndex]);
+
+    setEditingSlideIndex(null);
+    setEditedExplanation("");
+  };
+
+  const saveHistory = (explanation: Explanation) => {
+    const key = getHistoryKey(courseId!, explanation.slide - 1);
+    const history = JSON.parse(localStorage.getItem(key) || "[]");
+    history.push(explanation.explanation);
+    localStorage.setItem(key, JSON.stringify(history));
+  };
+
+  const handleSaveExplanation = async () => {
     if (!courseId || !urlTenantId || !urlToken) {
       toast.error("Missing required parameters");
+      return;
+    }
+
+    const currentExplanation = explanations.find(
+      (exp) => exp.slide === currentSlideIndex + 1
+    );
+
+    if (!currentExplanation) {
+      toast.error("No explanation found for the current slide.");
       return;
     }
 
@@ -205,17 +262,18 @@ const AdminCoursePlayer = () => {
           courseId,
           tenantId: urlTenantId,
           slideIndex: currentSlideIndex + 1,
-          explanation: explanations[currentSlideIndex]?.explanation || "",
+          explanation: currentExplanation.explanation,
         },
         urlToken
       );
 
-      toast.success("Explanation approved and saved successfully!");
+      toast.success("Explanation saved successfully!");
 
-      // Update the explanations array with the response data
+      // Update the explanations array with the response data,
+      // which might include a new audio URL
       setExplanations((prev) =>
-        prev.map((exp, idx) =>
-          idx === currentSlideIndex
+        prev.map((exp) =>
+          exp.slide === currentSlideIndex + 1
             ? {
                 ...exp,
                 explanation: response.slide.explanation,
@@ -225,8 +283,8 @@ const AdminCoursePlayer = () => {
         )
       );
     } catch (error) {
-      console.error("Error approving explanation:", error);
-      toast.error("Failed to approve explanation");
+      console.error("Error saving explanation:", error);
+      toast.error("Failed to save explanation");
     } finally {
       setIsApproving(false);
     }
@@ -288,23 +346,52 @@ const AdminCoursePlayer = () => {
           <div className="lg:w-96 bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden h-[calc(100vh-2rem)]">
             <Card className="h-full flex flex-col">
               <CardHeader>
-                <CardTitle>Slide Explanation</CardTitle>
+                <CardTitle className="flex items-center justify-between">
+                  <span>Slide Explanation</span>
+                </CardTitle>
               </CardHeader>
               <CardContent className="flex-1 flex flex-col overflow-hidden p-0">
                 {isLoadingExplanations ? (
                   <div className="flex items-center justify-center py-8 w-full h-full">
                     <Loader2 className="h-8 w-8 animate-spin text-complybrand-600" />
                   </div>
+                ) : editingSlideIndex === currentSlideIndex ? (
+                  <div className="flex-1 flex flex-col p-4 space-y-2">
+                    <Textarea
+                      value={editedExplanation}
+                      onChange={(e) => setEditedExplanation(e.target.value)}
+                      className="flex-1 resize-none text-base"
+                      autoFocus
+                      onBlur={handleSaveLocalExplanation}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && !e.shiftKey) {
+                          e.preventDefault();
+                          handleSaveLocalExplanation();
+                        }
+                        if (e.key === "Escape") {
+                          handleCancelEdit();
+                        }
+                      }}
+                    />
+                    <p className="text-xs text-muted-foreground text-center">
+                      Press Enter to save, or Escape to cancel.
+                    </p>
+                  </div>
                 ) : (
                   <>
-                    <div className="flex-[3] min-h-0 overflow-y-auto p-4 prose dark:prose-invert max-w-none">
-                      <p>
-                        {explanations[currentSlideIndex]?.explanation ||
-                          "No explanation available for this slide."}
+                    <div
+                      className="flex-1 overflow-y-auto p-4"
+                      onDoubleClick={handleDoubleClickExplanation}
+                    >
+                      <p className="text-base whitespace-pre-wrap leading-relaxed text-gray-700 dark:text-gray-300">
+                        {explanations.find(
+                          (exp) => exp.slide === currentSlideIndex + 1
+                        )?.explanation || "No explanation available."}
                       </p>
                     </div>
-                    <div className="flex-[1] min-h-0 overflow-y-auto p-4 flex flex-col justify-end space-y-2">
+                    <div className="p-4 border-t border-gray-200 dark:border-gray-700">
                       <Textarea
+                        id="prompt"
                         placeholder="Enter your prompt to modify the explanation..."
                         value={prompt}
                         onChange={(e) => setPrompt(e.target.value)}
@@ -329,7 +416,7 @@ const AdminCoursePlayer = () => {
                           size="icon"
                           className="h-8 w-8"
                           title="Approve"
-                          onClick={handleApproveExplanation}
+                          onClick={handleSaveExplanation}
                           disabled={isApproving}
                         >
                           {isApproving ? (
@@ -344,7 +431,7 @@ const AdminCoursePlayer = () => {
                           className={`h-8 w-8 ${
                             isReverting ? "animate-spin" : ""
                           }`}
-                          title="Revert"
+                          title="Revert Changes"
                           onClick={handleRevertExplanation}
                         >
                           <RotateCcw className="h-4 w-4" />

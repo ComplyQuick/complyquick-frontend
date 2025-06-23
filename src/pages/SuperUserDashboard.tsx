@@ -115,10 +115,8 @@ const SuperUserDashboard = () => {
       try {
         let data;
         if (orgTab === "active") {
-          console.log("Fetching active organizations...");
           data = await superuserService.getActiveTenants();
         } else {
-          console.log("Fetching inactive organizations...");
           data = await superuserService.getInactiveTenants();
         }
         setTenants(data);
@@ -174,12 +172,10 @@ const SuperUserDashboard = () => {
     setConfirmModalOpen(false);
     try {
       if (confirmAction === "deactivate") {
-        console.log("Deactivating tenant:", selectedTenant.id);
         await superuserService.inactivateTenant(selectedTenant.id);
         setTenants((prev) => prev.filter((t) => t.id !== selectedTenant.id));
         toast.success("Organization deactivated successfully");
       } else {
-        console.log("Activating tenant:", selectedTenant.id);
         await superuserService.activateTenant(selectedTenant.id);
         setTenants((prev) => prev.filter((t) => t.id !== selectedTenant.id));
         toast.success("Organization activated successfully");
