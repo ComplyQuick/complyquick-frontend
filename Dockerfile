@@ -9,7 +9,7 @@ WORKDIR /app
 
 # Install dependencies based on the preferred package manager
 COPY package.json package-lock.json* ./
-RUN npm ci --only=production
+RUN npm ci
 
 # Rebuild the source code only when needed
 FROM base AS builder
@@ -35,8 +35,8 @@ COPY --from=builder /app/dist /app/dist
 COPY nginx.conf /etc/nginx/nginx.conf
 
 # Set proper permissions
-RUN chown -R nextjs:nodejs /app
-USER nextjs
+# RUN chown -R nextjs:nodejs /app
+# USER nextjs
 
 EXPOSE 3000
 

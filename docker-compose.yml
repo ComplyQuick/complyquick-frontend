@@ -6,7 +6,7 @@ services:
       context: .
       dockerfile: Dockerfile
     ports:
-      - "3000:3000"
+      - "7000:3000"
     environment:
       - NODE_ENV=production
     restart: unless-stopped
@@ -24,18 +24,3 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
-
-  # Development service (optional)
-  frontend-dev:
-    build:
-      context: .
-      dockerfile: Dockerfile.dev
-    ports:
-      - "7000:7000"
-    volumes:
-      - .:/app
-      - /app/node_modules
-    environment:
-      - NODE_ENV=development
-    profiles:
-      - dev
