@@ -61,6 +61,7 @@ const SuperUserDashboard = () => {
     "deactivate" | "activate" | null
   >(null);
   const [selectedTenant, setSelectedTenant] = useState<Tenant | null>(null);
+  const [totalOrganizationsCount, setTotalOrganizationsCount] = useState(0);
 
   const backendUrl = import.meta.env.VITE_BACKEND_URL || "";
 
@@ -109,6 +110,21 @@ const SuperUserDashboard = () => {
   }, []);
 
   useEffect(() => {
+    const fetchTotalOrganizationsCount = async () => {
+      try {
+        const [activeData, inactiveData] = await Promise.all([
+          superuserService.getActiveTenants(),
+          superuserService.getInactiveTenants(),
+        ]);
+        setTotalOrganizationsCount(activeData.length + inactiveData.length);
+      } catch (e) {
+        // Optionally handle error
+      }
+    };
+    fetchTotalOrganizationsCount();
+  }, []);
+
+  useEffect(() => {
     const fetchTenants = async () => {
       setIsLoading(true);
       setError(null);
@@ -148,6 +164,13 @@ const SuperUserDashboard = () => {
       try {
         const data = await superuserService.getTenants();
         setTenants(data);
+
+        // Also refresh total organizations count
+        const [activeData, inactiveData] = await Promise.all([
+          superuserService.getActiveTenants(),
+          superuserService.getInactiveTenants(),
+        ]);
+        setTotalOrganizationsCount(activeData.length + inactiveData.length);
       } catch (error) {
         toast.error("Failed to refresh tenants");
       }
@@ -179,6 +202,17 @@ const SuperUserDashboard = () => {
         await superuserService.activateTenant(selectedTenant.id);
         setTenants((prev) => prev.filter((t) => t.id !== selectedTenant.id));
         toast.success("Organization activated successfully");
+      }
+
+      // Refresh total organizations count
+      try {
+        const [activeData, inactiveData] = await Promise.all([
+          superuserService.getActiveTenants(),
+          superuserService.getInactiveTenants(),
+        ]);
+        setTotalOrganizationsCount(activeData.length + inactiveData.length);
+      } catch (e) {
+        // Optionally handle error
       }
     } catch (err) {
       toast.error(`Failed to ${confirmAction} organization`);
@@ -230,11 +264,11 @@ const SuperUserDashboard = () => {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold animate-fade-in">
-                  {tenants.length}
+                  {totalOrganizationsCount}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  {tenants.length > 0
-                    ? `+${tenants.length} from last month`
+                  {totalOrganizationsCount > 0
+                    ? `+${totalOrganizationsCount} from last month`
                     : "No organizations yet"}
                 </p>
               </CardContent>
@@ -365,7 +399,7 @@ const SuperUserDashboard = () => {
                         <p className="text-destructive">{error}</p>
                       </div>
                     ) : recentTenants.length > 0 ? (
-                      recentTenants.map((tenant) => (
+                      recentTenants.slice(0, 3).map((tenant) => (
                         <div
                           key={tenant.id}
                           className="flex items-center p-3 rounded-md hover:bg-muted/20 transition-all duration-200"
@@ -389,6 +423,17 @@ const SuperUserDashboard = () => {
                         <p className="text-muted-foreground">
                           No recent organizations found.
                         </p>
+                      </div>
+                    )}
+                    {recentTenants.length > 3 && (
+                      <div className="pt-4 border-t border-border/30">
+                        <Button
+                          variant="outline"
+                          className="w-full"
+                          onClick={() => setActiveTab("organizations")}
+                        >
+                          View All Organizations ({recentTenants.length})
+                        </Button>
                       </div>
                     )}
                   </div>
@@ -457,7 +502,7 @@ const SuperUserDashboard = () => {
                               </p>
                               <p className="text-sm text-muted-foreground">
                                 {tenant.users?.length || 0} users ·{" "}
-                                {recent?.enabledCourseCount ?? 0} courses 
+                                {recent?.enabledCourseCount ?? 0} courses
                               </p>
                               <span className="block text-xs text-muted-foreground">
                                 Admin: {tenant.adminEmail}

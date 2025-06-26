@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React from "react";
 import {
   Card,
   CardContent,
@@ -25,58 +25,50 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import {
-  Loader2,
   CheckCircle,
   Clock,
   AlertCircle,
   Eye,
   BookOpen,
-  Users,
+  Activity as ActivityIcon,
+  Loader2,
 } from "lucide-react";
-import {
-  User,
-  RecentActivity,
-  TenantUsersListProps,
-  InProgressCourse,
-  CompletedCourse,
-  NotStartedCourse,
-  CourseStats,
-} from "@/types/TenantUsersList";
-import { adminService } from "@/services/adminService";
+import { Activity } from "@/types/AdminDashboard";
 
-const TenantUsersList = ({ tenantId, totalCourses }: TenantUsersListProps) => {
-  const [users, setUsers] = useState<User[]>([]);
-  const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [isLoadingActivity, setIsLoadingActivity] = useState(true);
+interface InProgressCourse {
+  title: string;
+  progress: number;
+}
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        setError(null);
+interface CompletedCourse {
+  title: string;
+  progress: number;
+}
 
-        // Fetch users and recent activity in parallel
-        const [usersData, activityData] = await Promise.all([
-          adminService.fetchTenantUsers(tenantId),
-          adminService.fetchRecentActivity(tenantId),
-        ]);
+interface NotStartedCourse {
+  title: string;
+  progress: number;
+}
 
-        setUsers(usersData);
-        setRecentActivity(activityData);
-      } catch (error) {
-        console.error("Error fetching data:", error);
-        setError("Failed to load data. Please try again later.");
-      } finally {
-        setLoading(false);
-        setIsLoadingActivity(false);
-      }
-    };
+interface CourseStats {
+  total: number;
+  inProgress: number;
+  completed: number;
+  notStarted: number;
+  inProgressDetails: InProgressCourse[];
+  completedDetails: CompletedCourse[];
+  notStartedDetails: NotStartedCourse[];
+}
 
-    fetchData();
-  }, [tenantId]);
+interface RecentActivityTableProps {
+  recentActivity: Activity[];
+  isLoading?: boolean;
+}
 
+const RecentActivityTable = ({
+  recentActivity,
+  isLoading = false,
+}: RecentActivityTableProps) => {
   const getOverallStatus = (courses: CourseStats | undefined) => {
     if (!courses) return "Not Started";
 
@@ -263,73 +255,63 @@ const TenantUsersList = ({ tenantId, totalCourses }: TenantUsersListProps) => {
     </Dialog>
   );
 
-  if (loading || isLoadingActivity) {
+  if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <div className="flex flex-col items-center gap-3">
-          <Loader2 className="h-8 w-8 animate-spin text-blue-600 dark:text-blue-400" />
-          <p className="text-sm text-slate-600 dark:text-slate-400">
-            Loading users...
-          </p>
-        </div>
-      </div>
+      <Card className="shadow-sm border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900">
+        <CardHeader className="bg-gradient-to-r from-slate-50 to-white dark:from-slate-800 dark:to-slate-900 border-b border-slate-200 dark:border-slate-700">
+          <CardTitle className="text-slate-900 dark:text-slate-100 flex items-center gap-2">
+            <div className="p-2 bg-green-100 dark:bg-green-900 rounded-lg">
+              <ActivityIcon className="h-5 w-5 text-green-600 dark:text-green-400" />
+            </div>
+          </CardTitle>
+          <CardDescription className="text-slate-600 dark:text-slate-400">
+            Latest user course activity
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-center py-12">
+            <div className="flex flex-col items-center gap-3">
+              <Loader2 className="h-8 w-8 animate-spin text-green-600 dark:text-green-400" />
+              <p className="text-sm text-slate-600 dark:text-slate-400">
+                Loading activity...
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     );
   }
 
-  if (error) {
+  if (recentActivity.length === 0) {
     return (
-      <div className="text-center py-12">
-        <AlertCircle className="h-12 w-12 text-red-500 dark:text-red-400 mx-auto mb-3" />
-        <p className="text-red-600 dark:text-red-400 font-medium">{error}</p>
-      </div>
+      <Card className="shadow-sm border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900">
+        <CardHeader className="bg-gradient-to-r from-slate-50 to-white dark:from-slate-800 dark:to-slate-900 border-b border-slate-200 dark:border-slate-700">
+          <CardTitle className="text-slate-900 dark:text-slate-100 flex items-center gap-2">
+            <div className="p-2 bg-green-100 dark:bg-green-900 rounded-lg">
+              <ActivityIcon className="h-5 w-5 text-green-600 dark:text-green-400" />
+            </div>
+            Recent Activity
+          </CardTitle>
+          <CardDescription className="text-slate-600 dark:text-slate-400">
+            Latest user course activity
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center py-12">
+            <div className="bg-slate-50 dark:bg-slate-800 rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-4">
+              <ActivityIcon className="h-10 w-10 text-slate-400 dark:text-slate-500" />
+            </div>
+            <p className="text-slate-600 dark:text-slate-400 font-medium">
+              No recent activity found.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
     );
   }
-
-  if (users.length === 0) {
-    return (
-      <div className="text-center py-12">
-        <div className="bg-slate-50 dark:bg-slate-800 rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-4">
-          <AlertCircle className="h-10 w-10 text-slate-400 dark:text-slate-500" />
-        </div>
-        <p className="text-slate-600 dark:text-slate-400 font-medium">
-          No users found for this organization.
-        </p>
-      </div>
-    );
-  }
-
-  const userRows = users.map((user) => {
-    const activity = recentActivity.find((a) => a.email === user.email);
-    const courses = activity?.courses;
-
-    return {
-      ...user,
-      courses: courses || {
-        total: 0,
-        notStarted: 0,
-        inProgress: 0,
-        completed: 0,
-        inProgressDetails: [],
-        completedDetails: [],
-        notStartedDetails: [],
-      },
-      overallStatus: getOverallStatus(courses),
-    };
-  });
 
   return (
     <Card className="overflow-hidden shadow-sm border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900">
-      <CardHeader className="bg-gradient-to-r from-slate-50 to-white dark:from-slate-800 dark:to-slate-900 border-b border-slate-200 dark:border-slate-700">
-        <CardTitle className="text-slate-900 dark:text-slate-100 flex items-center gap-2">
-          <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg">
-            <Users className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-          </div>
-          Organization Users
-        </CardTitle>
-        <CardDescription className="text-slate-600 dark:text-slate-400">
-          View and manage users in your organization
-        </CardDescription>
-      </CardHeader>
       <CardContent className="p-0">
         <div className="overflow-x-auto">
           <Table>
@@ -356,83 +338,85 @@ const TenantUsersList = ({ tenantId, totalCourses }: TenantUsersListProps) => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {userRows.map((user, index) => (
-                <TableRow
-                  key={user.id}
-                  className="border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors duration-150"
-                >
-                  <TableCell className="font-medium text-slate-900 dark:text-slate-100">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-sm font-semibold">
-                        {user.name.charAt(0).toUpperCase()}
+              {recentActivity.map((activity, index) => {
+                const overallStatus = getOverallStatus(activity.courses);
+
+                return (
+                  <TableRow
+                    key={index}
+                    className="border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors duration-150"
+                  >
+                    <TableCell className="font-medium text-slate-900 dark:text-slate-100">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-green-500 to-teal-600 flex items-center justify-center text-white text-sm font-semibold">
+                          {activity.name.charAt(0).toUpperCase()}
+                        </div>
+                        {activity.name}
                       </div>
-                      {user.name}
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-slate-600 dark:text-slate-400">
-                    {user.email}
-                  </TableCell>
-                  <TableCell className="text-center">
-                    <div className="flex items-center justify-center gap-2">
-                      <Badge
-                        variant="outline"
-                        className="bg-slate-50 text-slate-700 border-slate-300 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-600 font-mono"
-                      >
-                        {user.courses.notStarted}/{user.courses.total}
-                      </Badge>
-                      {user.courses.notStarted > 0 &&
-                        user.courses.notStartedDetails && (
+                    </TableCell>
+                    <TableCell className="text-slate-600 dark:text-slate-400">
+                      {activity.email}
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <div className="flex items-center justify-center gap-2">
+                        <Badge
+                          variant="outline"
+                          className="bg-slate-50 text-slate-700 border-slate-300 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-600 font-mono"
+                        >
+                          {activity.courses.notStarted}/{activity.courses.total}
+                        </Badge>
+                        {activity.courses.notStarted > 0 && (
                           <NotStartedModal
-                            courses={user.courses.notStartedDetails}
+                            courses={activity.courses.notStartedDetails}
                           />
                         )}
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-center">
-                    <div className="flex items-center justify-center gap-2">
-                      <Badge
-                        variant="outline"
-                        className="bg-amber-50 text-amber-700 border-amber-300 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-700 font-mono"
-                      >
-                        {user.courses.inProgress}/{user.courses.total}
-                      </Badge>
-                      {user.courses.inProgress > 0 && (
-                        <InProgressModal
-                          courses={user.courses.inProgressDetails}
-                        />
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-center">
-                    <div className="flex items-center justify-center gap-2">
-                      <Badge
-                        variant="outline"
-                        className="bg-emerald-50 text-emerald-700 border-emerald-300 dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-700 font-mono"
-                      >
-                        {user.courses.completed}/{user.courses.total}
-                      </Badge>
-                      {user.courses.completed > 0 &&
-                        user.courses.completedDetails && (
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <div className="flex items-center justify-center gap-2">
+                        <Badge
+                          variant="outline"
+                          className="bg-amber-50 text-amber-700 border-amber-300 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-700 font-mono"
+                        >
+                          {activity.courses.inProgress}/{activity.courses.total}
+                        </Badge>
+                        {activity.courses.inProgress > 0 && (
+                          <InProgressModal
+                            courses={activity.courses.inProgressDetails}
+                          />
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <div className="flex items-center justify-center gap-2">
+                        <Badge
+                          variant="outline"
+                          className="bg-emerald-50 text-emerald-700 border-emerald-300 dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-700 font-mono"
+                        >
+                          {activity.courses.completed}/{activity.courses.total}
+                        </Badge>
+                        {activity.courses.completed > 0 && (
                           <CompletedModal
-                            courses={user.courses.completedDetails}
+                            courses={activity.courses.completedDetails}
                           />
                         )}
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-center">
-                    <div className="flex items-center justify-center gap-2">
-                      {getStatusIcon(user.overallStatus)}
-                      <Badge
-                        className={`${getStatusColor(
-                          user.overallStatus
-                        )} font-medium shadow-sm`}
-                      >
-                        {user.overallStatus}
-                      </Badge>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <div className="flex items-center justify-center gap-2">
+                        {getStatusIcon(overallStatus)}
+                        <Badge
+                          className={`${getStatusColor(
+                            overallStatus
+                          )} font-medium shadow-sm`}
+                        >
+                          {overallStatus}
+                        </Badge>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         </div>
@@ -441,4 +425,4 @@ const TenantUsersList = ({ tenantId, totalCourses }: TenantUsersListProps) => {
   );
 };
 
-export default TenantUsersList;
+export default RecentActivityTable;

@@ -138,15 +138,7 @@ const QuizResults = () => {
           return;
         }
 
-        // Fetch course details to get materialUrl
-        const courses = await userService.fetchCourseDetails(tenantId, token);
-        const course = courses.find((c) => c.id === courseIdFinal);
-        if (!course) {
-          toast.error("Course not found for MCQ generation.");
-          return;
-        }
-
-        // Fetch course material URL separately
+        // Fetch course material URL directly
         const courseMaterial = await userService.fetchCourseMaterial(
           courseIdFinal,
           tenantId

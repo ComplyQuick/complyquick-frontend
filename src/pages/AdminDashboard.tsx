@@ -24,6 +24,7 @@ import {
 import UsersList from "@/components/dashboard/UsersList";
 import CourseCard from "@/components/dashboard/CourseCard";
 import TenantUsersList from "@/components/dashboard/TenantUsersList";
+import RecentActivityTable from "@/components/dashboard/RecentActivityTable";
 import AddTenantDetailsForm from "@/components/forms/AddTenantDetailsForm";
 import {
   Dialog,
@@ -316,12 +317,39 @@ const AdminDashboard = () => {
         "ctoContact",
       ];
       const missing = requiredFields.some(
-        (field) => !details[field] || String(details[field]).trim() === ""
+        (field) =>
+          !details.details[field] ||
+          String(details.details[field]).trim() === ""
       );
       if (missing) {
         setShowOrgDetailsWarning(true);
         return;
       }
+
+      // Fetch available courses (filtered to exclude already assigned ones)
+      try {
+        const token = localStorage.getItem("token");
+        if (!token) {
+          throw new Error("No authentication token found");
+        }
+        const assignedCourses = await adminService.fetchTenantCourses(
+          tenantId,
+          token
+        );
+        console.log("Assigned courses:", assignedCourses);
+
+        const filteredCourses = await adminService.fetchAvailableCourses(
+          assignedCourses
+        );
+        console.log("Filtered available courses:", filteredCourses);
+
+        setAvailableCourses(filteredCourses);
+      } catch (error) {
+        console.error("Error fetching available courses:", error);
+        toast.error("Failed to load available courses");
+        return;
+      }
+
       setIsAddCourseDialogOpen(true);
     } catch (e) {
       setShowOrgDetailsWarning(true);
@@ -464,7 +492,8 @@ const AdminDashboard = () => {
                 <CardHeader>
                   <CardTitle>Recent User Activity</CardTitle>
                   <CardDescription>
-                    Track employee progress across all compliance courses
+                    Track employee progress across all mandatory compliance
+                    courses
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -477,16 +506,9 @@ const AdminDashboard = () => {
                       No recent activity found.
                     </div>
                   ) : (
-                    <UsersList
-                      users={recentActivity.map((activity) => ({
-                        id: activity.email,
-                        name: activity.name,
-                        email: activity.email,
-                        role: "employee",
-                        coursesCompleted: activity.totalCourses,
-                        totalCourses: courses.length,
-                        lastActivity: activity.status,
-                      }))}
+                    <RecentActivityTable
+                      recentActivity={recentActivity}
+                      isLoading={isLoadingStats}
                     />
                   )}
                   <div className="mt-4 flex justify-end">
@@ -528,57 +550,82 @@ const AdminDashboard = () => {
                     </span>
                   </span>
                 </div>
-                <Button
-                  onClick={handleOpenAddCourseDialog}
-                  className="bg-complybrand-700 hover:bg-complybrand-800 text-white px-3 py-1 rounded-full text-xs shadow-sm flex items-center"
-                >
-                  <PlusCircle className="mr-1 h-4 w-4" /> Add Course
-                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => setActiveTab("courses")}
+                    className="hover:bg-complybrand-600 hover:text-white transition-colors"
+                  >
+                    View All Courses
+                  </Button>
+                  <Button
+                    onClick={handleOpenAddCourseDialog}
+                    className="bg-complybrand-700 hover:bg-complybrand-800 text-white px-3 py-1 rounded-full text-xs shadow-sm flex items-center"
+                  >
+                    <PlusCircle className="mr-1 h-4 w-4" /> Add Course
+                  </Button>
+                </div>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                {(courseView === "active"
-                  ? activeCourses
-                  : inactiveCourses
-                ).map((item) => (
-                  <CourseCard
-                    key={item.id}
-                    id={item.id}
-                    courseId={item.courseId}
-                    title={item.title}
-                    description={item.description}
-                    duration={item.duration}
-                    enrolledUsers={item.enrolledUsers}
-                    userRole="admin"
-                    tenantId={tenantId || ""}
-                    token={localStorage.getItem("token") || ""}
-                    learningObjectives={
-                      Array.isArray(item.learningObjectives)
-                        ? item.learningObjectives.join(", ")
-                        : item.learningObjectives
-                    }
-                    properties={{
-                      mandatory: item.mandatory,
-                      skippable: item.skippable,
-                      retryType: item.retryType,
-                      isEnabled: item.isEnabled,
-                    }}
-                    courseDetails={{
-                      id: item.id,
-                      title: item.title,
-                      description: item.description,
-                      learningObjectives: Array.isArray(item.learningObjectives)
-                        ? item.learningObjectives.join(", ")
-                        : item.learningObjectives,
-                      properties: {
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {(courseView === "active" ? activeCourses : inactiveCourses)
+                  .slice(0, 3)
+                  .map((item) => (
+                    <CourseCard
+                      key={item.id}
+                      id={item.id}
+                      courseId={item.courseId}
+                      title={item.title}
+                      description={item.description}
+                      duration={item.duration}
+                      enrolledUsers={item.enrolledUsers}
+                      userRole="admin"
+                      tenantId={tenantId || ""}
+                      token={localStorage.getItem("token") || ""}
+                      learningObjectives={
+                        Array.isArray(item.learningObjectives)
+                          ? item.learningObjectives.join(", ")
+                          : item.learningObjectives
+                      }
+                      properties={{
                         mandatory: item.mandatory,
                         skippable: item.skippable,
                         retryType: item.retryType,
-                      },
-                      pocs: item.pocs || [],
-                    }}
-                  />
-                ))}
+                        isEnabled: item.isEnabled,
+                      }}
+                      courseDetails={{
+                        id: item.id,
+                        title: item.title,
+                        description: item.description,
+                        learningObjectives: Array.isArray(
+                          item.learningObjectives
+                        )
+                          ? item.learningObjectives.join(", ")
+                          : item.learningObjectives,
+                        properties: {
+                          mandatory: item.mandatory,
+                          skippable: item.skippable,
+                          retryType: item.retryType,
+                        },
+                        pocs: item.pocs || [],
+                      }}
+                    />
+                  ))}
               </div>
+              {(courseView === "active" ? activeCourses : inactiveCourses)
+                .length > 3 && (
+                <div className="mt-4 text-center">
+                  <Button
+                    variant="outline"
+                    onClick={() => setActiveTab("courses")}
+                    className="hover:bg-complybrand-600 hover:text-white transition-colors"
+                  >
+                    View{" "}
+                    {(courseView === "active" ? activeCourses : inactiveCourses)
+                      .length - 3}{" "}
+                    More Courses
+                  </Button>
+                </div>
+              )}
             </TabsContent>
 
             <TabsContent value="users" className="animate-fade-in">
@@ -706,6 +753,7 @@ const AdminDashboard = () => {
                         );
                       }
                     }}
+                    className="border-2 border-gray-400 dark:border-gray-600 data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600"
                   />
                   <div className="flex-1">
                     <Label htmlFor={course.id} className="text-lg font-medium">

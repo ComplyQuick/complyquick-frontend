@@ -6,7 +6,7 @@ const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
 export const chatbotService = {
   async fetchCourses(tenantId: string, token: string): Promise<Course[]> {
     const response = await fetch(
-      `${BACKEND_URL}/api/tenant-admin/tenants/${tenantId}/courses`,
+      `${BACKEND_URL}/api/tenant-admin/user/enabled-courses?tenantId=${tenantId}`,
       {
         headers: {
           Authorization: `Bearer ${token}`,

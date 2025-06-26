@@ -63,6 +63,7 @@ const SlidePlayer = ({
   onSkipBackward,
   resumeSlideIndex,
   isAdminView = false,
+  materialUrl: propMaterialUrl,
 }: SlidePlayerProps) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [volume, setVolume] = useState(80);
@@ -102,26 +103,29 @@ const SlidePlayer = ({
         if (!courseId || !tenantId) {
           throw new Error("Missing courseId or tenantId");
         }
-        // First fetch course details to get materialUrl
-        const courseData = await slideService.fetchCourseDetails(tenantId);
 
-        // Find the current course in the list
-        const currentCourse = courseData.find(
-          (course) => course.id === courseId
-        );
-
-        if (!currentCourse) {
-          throw new Error("Current course not found");
-        }
-
-        // Update the material URL state
-        if (currentCourse.materialUrl) {
+        // For admin view, use the provided materialUrl
+        if (isAdminView && propMaterialUrl) {
           console.log(
-            "Fetched materialUrl from DB:",
-            currentCourse.materialUrl
+            "Using provided materialUrl for admin view:",
+            propMaterialUrl
           );
-          setMaterialUrl(currentCourse.materialUrl);
+          setMaterialUrl(propMaterialUrl);
+        } else {
+          // For regular users, fetch the materialUrl
+          try {
+            const material = await slideService.fetchCourseMaterial(
+              courseId,
+              tenantId
+            );
+            console.log("Material URL fetched for user:", material);
+            setMaterialUrl(material);
+          } catch (materialError) {
+            console.warn("Failed to fetch material URL:", materialError);
+            // Don't fail the entire load if material URL fetch fails
+          }
         }
+
         const explanations = await slideService.fetchExplanations(
           courseId,
           tenantId
@@ -150,7 +154,7 @@ const SlidePlayer = ({
     };
 
     fetchExplanations();
-  }, [courseId, currentSlideIndex]);
+  }, [courseId, currentSlideIndex, isAdminView, propMaterialUrl]);
 
   // Update current explanation when slide changes
   useEffect(() => {

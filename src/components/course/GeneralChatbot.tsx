@@ -26,6 +26,106 @@ import {
 } from "@/types/Chat";
 import { chatbotService } from "@/services/generalChatbotService";
 
+// Add this helper component before the main component
+const FormattedMessage = ({
+  content,
+  isUser,
+}: {
+  content: string;
+  isUser: boolean;
+}) => {
+  if (isUser) {
+    return <span>{content}</span>;
+  }
+
+  // Format AI responses
+  const formatContent = (text: string) => {
+    // Split by double line breaks for paragraphs, but also handle single line breaks
+    const sections = text.split("\n\n").filter((s) => s.trim());
+
+    return sections.map((section, sectionIndex) => {
+      const lines = section.split("\n").filter((l) => l.trim());
+
+      // Check if this section is a list
+      const isBulletList = lines.every(
+        (line) =>
+          line.trim().startsWith("•") ||
+          line.trim().startsWith("-") ||
+          line.trim().startsWith("*")
+      );
+
+      const isNumberedList = lines.every((line) => /^\d+\./.test(line.trim()));
+
+      if (isBulletList && lines.length > 1) {
+        return (
+          <ul
+            key={sectionIndex}
+            className={`list-disc list-inside space-y-1 ${
+              sectionIndex > 0 ? "mt-4" : ""
+            }`}
+          >
+            {lines.map((line, lineIndex) => (
+              <li key={lineIndex} className="text-sm">
+                {formatTextWithBold(line.replace(/^[•\-*]\s*/, ""))}
+              </li>
+            ))}
+          </ul>
+        );
+      }
+
+      if (isNumberedList && lines.length > 1) {
+        return (
+          <ol
+            key={sectionIndex}
+            className={`list-decimal list-inside space-y-1 ${
+              sectionIndex > 0 ? "mt-4" : ""
+            }`}
+          >
+            {lines.map((line, lineIndex) => (
+              <li key={lineIndex} className="text-sm">
+                {formatTextWithBold(line.replace(/^\d+\.\s*/, ""))}
+              </li>
+            ))}
+          </ol>
+        );
+      }
+
+      // Regular paragraph
+      return (
+        <div key={sectionIndex} className={sectionIndex > 0 ? "mt-4" : ""}>
+          {lines.map((line, lineIndex) => (
+            <p key={lineIndex} className={lineIndex > 0 ? "mt-2" : ""}>
+              {formatTextWithBold(line)}
+            </p>
+          ))}
+        </div>
+      );
+    });
+  };
+
+  const formatTextWithBold = (text: string) => {
+    return text.split(/(\*\*.*?\*\*)/).map((part, partIndex) => {
+      if (part.startsWith("**") && part.endsWith("**")) {
+        return (
+          <strong
+            key={partIndex}
+            className="font-semibold text-gray-900 dark:text-gray-100"
+          >
+            {part.slice(2, -2)}
+          </strong>
+        );
+      }
+      return part;
+    });
+  };
+
+  return (
+    <div className="space-y-2 text-sm leading-relaxed">
+      {formatContent(content)}
+    </div>
+  );
+};
+
 const GeneralChatbot = ({
   tenantId,
   initialCourseId,
@@ -45,7 +145,7 @@ const GeneralChatbot = ({
     null
   );
   const [pocs, setPocs] = useState<POC[]>([]);
-  const [showCourseCards, setShowCourseCards] = useState(true);
+  const [showCourseCards, setShowCourseCards] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const token = localStorage.getItem("token");
   const [searchParams] = useSearchParams();
@@ -189,8 +289,8 @@ const GeneralChatbot = ({
   };
 
   return (
-    <Card className="w-full max-w-2xl mx-auto mt-8">
-      <div className="p-4 border-b flex items-center justify-between">
+    <Card className="w-full h-full flex flex-col">
+      <div className="p-4 border-b flex items-center justify-between flex-shrink-0">
         <div>
           <h3 className="font-semibold">General Chatbot</h3>
           <p className="text-sm text-gray-500">
@@ -199,37 +299,66 @@ const GeneralChatbot = ({
               : "Ask any general compliance or company-related question."}
           </p>
         </div>
-        {!hideCourseSelector && (
-          <button
-            onClick={() => setShowCourseCards(!showCourseCards)}
-            className="p-1 hover:bg-muted rounded-full transition-colors"
-            aria-label={showCourseCards ? "Hide courses" : "Show courses"}
-          >
-            {showCourseCards ? (
-              <ChevronUp className="h-4 w-4 text-muted-foreground" />
-            ) : (
-              <ChevronDown className="h-4 w-4 text-muted-foreground" />
-            )}
-          </button>
-        )}
-        {onClose && (
-          <button
-            onClick={onClose}
-            className="ml-2 p-1 rounded-full hover:bg-muted transition-colors"
-            aria-label="Close chatbot"
-          >
-            <X className="h-5 w-5" />
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          {!hideCourseSelector && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowCourseCards(!showCourseCards)}
+              className="flex items-center gap-1"
+            >
+              {showCourseCards ? (
+                <>
+                  <ChevronUp className="h-4 w-4" />
+                  <span className="text-sm">Hide Courses</span>
+                </>
+              ) : (
+                <>
+                  <ChevronDown className="h-4 w-4" />
+                  <span className="text-sm">Show Courses</span>
+                </>
+              )}
+            </Button>
+          )}
+          {onClose && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onClose}
+              className="flex items-center gap-1"
+            >
+              <X className="h-4 w-4" />
+              <span className="text-sm">Close</span>
+            </Button>
+          )}
+        </div>
       </div>
 
       {!hideCourseSelector && showCourseCards && (
-        <div className="p-4 border-b">
-          <h4 className="text-sm font-medium mb-2">Course-Specific Chat</h4>
-          <div className="grid grid-cols-2 gap-2">
+        <div className="p-3 border-b bg-gray-50 dark:bg-gray-800/50 flex-shrink-0">
+          <div className="flex items-center gap-2 mb-2">
+            <BookOpen className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+            <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+              Course-Specific Chat
+            </h4>
+          </div>
+          <p className="text-xs text-gray-600 dark:text-gray-400 mb-2">
+            Select a course below to get specific help about that course, or use
+            general chat for company-wide questions.
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {isLoadingCourses ? (
-              <div className="col-span-2 text-center py-2">
-                <Loader2 className="h-4 w-4 animate-spin mx-auto" />
+              <div className="col-span-full text-center py-3">
+                <Loader2 className="h-4 w-4 animate-spin mx-auto mb-1" />
+                <p className="text-xs text-gray-500">Loading courses...</p>
+              </div>
+            ) : courses.length === 0 ? (
+              <div className="col-span-full text-center py-3">
+                <BookOpen className="h-6 w-6 mx-auto mb-1 text-gray-400" />
+                <p className="text-xs text-gray-500">No courses available</p>
+                <p className="text-xs text-gray-400">
+                  Use general chat for company questions
+                </p>
               </div>
             ) : (
               courses.map((course) => (
@@ -238,7 +367,11 @@ const GeneralChatbot = ({
                   variant={
                     selectedCourse?.id === course.id ? "default" : "outline"
                   }
-                  className="justify-start h-auto py-2 px-3"
+                  className={`justify-start h-auto py-2 px-2 text-left ${
+                    selectedCourse?.id === course.id
+                      ? "bg-blue-600 hover:bg-blue-700 text-white"
+                      : "hover:bg-blue-50 dark:hover:bg-blue-900/20"
+                  }`}
                   onClick={() => {
                     setSelectedCourse(
                       selectedCourse?.id === course.id ? null : course
@@ -246,17 +379,43 @@ const GeneralChatbot = ({
                     setMessages([]); // Clear chat history when switching courses
                   }}
                 >
-                  <BookOpen className="h-4 w-4 mr-2" />
-                  <span className="text-sm truncate">{course.title}</span>
+                  <BookOpen
+                    className={`h-3 w-3 mr-2 flex-shrink-0 ${
+                      selectedCourse?.id === course.id
+                        ? "text-white"
+                        : "text-blue-600 dark:text-blue-400"
+                    }`}
+                  />
+                  <span className="text-xs truncate font-medium">
+                    {course.title}
+                  </span>
                 </Button>
               ))
             )}
           </div>
+          {courses.length > 0 && (
+            <div className="mt-2 p-1.5 bg-blue-50 dark:bg-blue-900/20 rounded">
+              <p className="text-xs text-blue-800 dark:text-blue-200">
+                💡 Select a course for specific help, or leave unselected for
+                general questions
+              </p>
+            </div>
+          )}
         </div>
       )}
 
-      <ScrollArea className="h-[400px] p-4">
+      <ScrollArea className="flex-1 p-4 min-h-[200px]">
         <div className="space-y-4">
+          {messages.length === 0 && !isLoading && !selectedCourse && (
+            <div className="flex justify-center">
+              <div className="max-w-[80%] rounded-lg p-3 bg-muted/50 border border-dashed">
+                <p className="text-sm text-gray-500 text-center">
+                  👋 Start a conversation! Ask me anything about compliance or
+                  select a course above for specific help.
+                </p>
+              </div>
+            </div>
+          )}
           {messages.map((message, index) => (
             <div
               key={index}
@@ -271,7 +430,10 @@ const GeneralChatbot = ({
                     : "bg-muted"
                 }`}
               >
-                {message.content}
+                <FormattedMessage
+                  content={message.content}
+                  isUser={message.role === "user"}
+                />
               </div>
             </div>
           ))}
@@ -286,7 +448,7 @@ const GeneralChatbot = ({
         </div>
       </ScrollArea>
 
-      <div className="p-4 border-t flex gap-2">
+      <div className="p-4 border-t flex gap-2 flex-shrink-0">
         <div className="flex-1 flex gap-2">
           <Input
             value={input}

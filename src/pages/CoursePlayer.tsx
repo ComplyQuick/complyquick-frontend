@@ -12,7 +12,7 @@ import ChatHelp from "@/components/course/ChatHelp";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { Slide, CoursePlayerProps } from "@/types/CoursePlayer";
-import { adminService } from "@/services/adminService";
+import { slideService } from "@/services/slideService";
 
 const CoursePlayer: React.FC<CoursePlayerProps> = ({
   courseId,
@@ -71,16 +71,20 @@ const CoursePlayer: React.FC<CoursePlayerProps> = ({
   useEffect(() => {
     const fetchExplanationsAndSetSlide = async () => {
       if (!courseId || !urlTenantId || !urlToken) {
+        console.log("Missing parameters:", { courseId, urlTenantId, urlToken });
         toast.error("Missing required parameters");
         return;
       }
 
+      console.log("Fetching explanations for:", { courseId, urlTenantId });
+
       try {
-        const { explanations } = await adminService.fetchCourseExplanations(
+        const explanations = await slideService.fetchExplanations(
           courseId,
-          urlTenantId,
-          urlToken
+          urlTenantId
         );
+
+        console.log("Explanations received:", explanations);
 
         if (!Array.isArray(explanations)) {
           throw new Error("Invalid explanations format received from API");
@@ -109,11 +113,17 @@ const CoursePlayer: React.FC<CoursePlayerProps> = ({
           })
         );
 
+        console.log("Slides data created:", slidesData);
+        console.log("Setting slides with length:", slidesData.length);
+
         setSlides(slidesData);
         setCurrentSlideIndex(resumeSlide);
         resumeSlideRef.current = resumeSlide;
         setIsLoading(false);
+
+        console.log("Loading state set to false");
       } catch (error) {
+        console.error("Error fetching explanations:", error);
         toast.error("Failed to load course content");
         setIsLoading(false);
       }
@@ -151,7 +161,7 @@ const CoursePlayer: React.FC<CoursePlayerProps> = ({
     return <CourseNotFound />;
   }
 
-  if (slides.length === 0) {
+  if (isLoading || slides.length === 0) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-complybrand-700"></div>

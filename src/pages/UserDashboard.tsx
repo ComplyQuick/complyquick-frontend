@@ -275,14 +275,14 @@ const UserDashboard = () => {
             </svg>
           </button>
         </DrawerTrigger>
-        <DrawerContent className="max-w-lg mx-auto w-full">
-          <DrawerHeader>
+        <DrawerContent className="max-w-4xl mx-auto w-full h-[90vh]">
+          <DrawerHeader className="flex-shrink-0">
             <DrawerTitle>General Chatbot</DrawerTitle>
             <DrawerClose className="absolute right-4 top-4 text-gray-400 hover:text-gray-600">
               ✕
             </DrawerClose>
           </DrawerHeader>
-          <div className="p-2 pb-8">
+          <div className="flex-1 overflow-hidden p-4 pb-8">
             <GeneralChatbot tenantId={tenantId || ""} />
           </div>
         </DrawerContent>

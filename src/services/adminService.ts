@@ -144,12 +144,18 @@ export const adminService = {
     }
 
     const data = await response.json();
-    return data.filter(
+    console.log("All courses from API:", data);
+    console.log("Assigned courses to filter out:", assignedCourses);
+
+    const filtered = data.filter(
       (course: Course) =>
         !assignedCourses.some(
-          (assignedCourse) => assignedCourse.id === course.id
+          (assignedCourse) => assignedCourse.courseId === course.id
         )
     );
+
+    console.log("Filtered result:", filtered);
+    return filtered;
   },
 
   /**
@@ -256,6 +262,36 @@ export const adminService = {
     }
 
     return response.json();
+  },
+
+  /**
+   * Fetch course material URL
+   */
+  async fetchCourseMaterial(
+    courseId: string,
+    tenantId: string,
+    token: string
+  ): Promise<{ materialUrl: string }> {
+    const response = await fetch(
+      `${BACKEND_URL}/api/courses/${courseId}/chatbot-material?tenantId=${tenantId}`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error("Failed to fetch course material URL");
+    }
+
+    const data = await response.json();
+    if (!data.materialUrl) {
+      throw new Error("Material URL is empty in the response");
+    }
+
+    return { materialUrl: data.materialUrl };
   },
 
   /**

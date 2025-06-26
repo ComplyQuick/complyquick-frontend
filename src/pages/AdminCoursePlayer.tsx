@@ -39,6 +39,7 @@ const AdminCoursePlayer = () => {
     null
   );
   const [editedExplanation, setEditedExplanation] = useState("");
+  const [materialUrl, setMaterialUrl] = useState<string>("");
 
   const resumeSlideRef = useRef(0);
 
@@ -104,6 +105,19 @@ const AdminCoursePlayer = () => {
         resumeSlideRef.current = 0;
         setIsLoading(false);
         setIsLoadingExplanations(false);
+
+        // Fetch material URL for the course
+        try {
+          const materialUrlData = await adminService.fetchCourseMaterial(
+            courseId,
+            urlTenantId,
+            urlToken
+          );
+          setMaterialUrl(materialUrlData.materialUrl || "");
+        } catch (materialError) {
+          console.warn("Failed to fetch material URL:", materialError);
+          // Don't fail the entire load if material URL fetch fails
+        }
       } catch (error) {
         console.error("Error fetching explanations:", error);
         toast.error("Failed to load course content");
@@ -339,6 +353,7 @@ const AdminCoursePlayer = () => {
                 onSkipBackward={() => {}}
                 resumeSlideIndex={resumeSlideRef.current}
                 isAdminView={true}
+                materialUrl={materialUrl}
               />
             </div>
           </div>

@@ -122,14 +122,25 @@ export const userService = {
     }
 
     const coursesData = await response.json();
-    return coursesData.map((course: CourseData) => ({
-      ...course,
-      properties: {
-        skippable: course.skippable,
-        mandatory: course.mandatory,
-        retryType: course.retryType,
-      },
-    }));
+
+    const transformedCourses = coursesData.map((course: CourseData) => {
+      // Provide default values if properties are undefined
+      const properties = {
+        skippable: course.skippable !== undefined ? course.skippable : false,
+        mandatory: course.mandatory !== undefined ? course.mandatory : true,
+        retryType:
+          course.retryType !== undefined
+            ? course.retryType
+            : ("DIFFERENT" as const),
+      };
+
+      return {
+        ...course,
+        properties,
+      };
+    });
+
+    return transformedCourses;
   },
 
   async fetchCourseProgress(

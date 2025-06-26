@@ -50,9 +50,25 @@ export interface Statistics {
 export interface Activity {
   email: string;
   name: string;
-  coursesInProgress: number;
-  totalCourses: number;
   status: string;
+  courses: {
+    total: number;
+    inProgress: number;
+    completed: number;
+    notStarted: number;
+    inProgressDetails: Array<{
+      title: string;
+      progress: number;
+    }>;
+    completedDetails: Array<{
+      title: string;
+      progress: number;
+    }>;
+    notStartedDetails: Array<{
+      title: string;
+      progress: number;
+    }>;
+  };
 }
 
 export interface TenantDetailsPayload {

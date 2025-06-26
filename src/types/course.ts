@@ -64,6 +64,7 @@ export interface SlidePlayerProps {
   onSkipBackward: () => void;
   resumeSlideIndex: number;
   isAdminView?: boolean;
+  materialUrl?: string;
 }
 
 export interface SlideControlsProps {

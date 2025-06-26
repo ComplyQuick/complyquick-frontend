@@ -15,6 +15,106 @@ import {
 } from "@/types/Chat";
 import { chatService } from "@/services/chatService";
 
+// Formatted message component for better AI response display
+const FormattedMessage = ({
+  content,
+  isUser,
+}: {
+  content: string;
+  isUser: boolean;
+}) => {
+  if (isUser) {
+    return <span>{content}</span>;
+  }
+
+  // Format AI responses
+  const formatContent = (text: string) => {
+    // Split by double line breaks for paragraphs, but also handle single line breaks
+    const sections = text.split("\n\n").filter((s) => s.trim());
+
+    return sections.map((section, sectionIndex) => {
+      const lines = section.split("\n").filter((l) => l.trim());
+
+      // Check if this section is a list
+      const isBulletList = lines.every(
+        (line) =>
+          line.trim().startsWith("•") ||
+          line.trim().startsWith("-") ||
+          line.trim().startsWith("*")
+      );
+
+      const isNumberedList = lines.every((line) => /^\d+\./.test(line.trim()));
+
+      if (isBulletList && lines.length > 1) {
+        return (
+          <ul
+            key={sectionIndex}
+            className={`list-disc list-inside space-y-1 ${
+              sectionIndex > 0 ? "mt-4" : ""
+            }`}
+          >
+            {lines.map((line, lineIndex) => (
+              <li key={lineIndex} className="text-sm">
+                {formatTextWithBold(line.replace(/^[•\-*]\s*/, ""))}
+              </li>
+            ))}
+          </ul>
+        );
+      }
+
+      if (isNumberedList && lines.length > 1) {
+        return (
+          <ol
+            key={sectionIndex}
+            className={`list-decimal list-inside space-y-1 ${
+              sectionIndex > 0 ? "mt-4" : ""
+            }`}
+          >
+            {lines.map((line, lineIndex) => (
+              <li key={lineIndex} className="text-sm">
+                {formatTextWithBold(line.replace(/^\d+\.\s*/, ""))}
+              </li>
+            ))}
+          </ol>
+        );
+      }
+
+      // Regular paragraph
+      return (
+        <div key={sectionIndex} className={sectionIndex > 0 ? "mt-4" : ""}>
+          {lines.map((line, lineIndex) => (
+            <p key={lineIndex} className={lineIndex > 0 ? "mt-2" : ""}>
+              {formatTextWithBold(line)}
+            </p>
+          ))}
+        </div>
+      );
+    });
+  };
+
+  const formatTextWithBold = (text: string) => {
+    return text.split(/(\*\*.*?\*\*)/).map((part, partIndex) => {
+      if (part.startsWith("**") && part.endsWith("**")) {
+        return (
+          <strong
+            key={partIndex}
+            className="font-semibold text-gray-900 dark:text-gray-100"
+          >
+            {part.slice(2, -2)}
+          </strong>
+        );
+      }
+      return part;
+    });
+  };
+
+  return (
+    <div className="space-y-2 text-sm leading-relaxed">
+      {formatContent(content)}
+    </div>
+  );
+};
+
 const ChatHelp = ({ slideTitle, slideContent, tenantId }: ChatHelpProps) => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
@@ -173,7 +273,10 @@ const ChatHelp = ({ slideTitle, slideContent, tenantId }: ChatHelpProps) => {
                     : "bg-muted"
                 }`}
               >
-                {message.content}
+                <FormattedMessage
+                  content={message.content}
+                  isUser={message.role === "user"}
+                />
               </div>
             </div>
           ))}

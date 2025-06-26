@@ -201,6 +201,7 @@ const CourseDetailsModal = ({
                         onCheckedChange={(v) =>
                           setEditProperties((p) => ({ ...p, mandatory: v }))
                         }
+                        className="data-[state=checked]:bg-red-600 data-[state=unchecked]:bg-slate-300 dark:data-[state=unchecked]:bg-slate-600"
                       />
                       <div>
                         <span className="font-medium">Mandatory</span>
@@ -215,6 +216,7 @@ const CourseDetailsModal = ({
                         onCheckedChange={(v) =>
                           setEditProperties((p) => ({ ...p, skippable: v }))
                         }
+                        className="data-[state=checked]:bg-emerald-600 data-[state=unchecked]:bg-slate-300 dark:data-[state=unchecked]:bg-slate-600"
                       />
                       <div>
                         <span className="font-medium">Skippable</span>
@@ -255,8 +257,8 @@ const CourseDetailsModal = ({
                       <div
                         className={`p-2 rounded-full ${
                           course.properties.mandatory
-                            ? "bg-red-100 text-red-600"
-                            : "bg-gray-100 text-gray-600"
+                            ? "bg-red-100 text-red-600 dark:bg-red-900 dark:text-red-400"
+                            : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400"
                         }`}
                       >
                         {course.properties.mandatory ? (
@@ -280,8 +282,8 @@ const CourseDetailsModal = ({
                       <div
                         className={`p-2 rounded-full ${
                           course.properties.skippable
-                            ? "bg-green-100 text-green-600"
-                            : "bg-gray-100 text-gray-600"
+                            ? "bg-emerald-100 text-emerald-600 dark:bg-emerald-900 dark:text-emerald-400"
+                            : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400"
                         }`}
                       >
                         {course.properties.skippable ? (
@@ -302,7 +304,7 @@ const CourseDetailsModal = ({
                       </div>
                     </div>
                     <div className="flex items-center gap-3 bg-background/50 p-3 rounded-lg border border-border/50">
-                      <div className="p-2 rounded-full bg-blue-100 text-blue-600">
+                      <div className="p-2 rounded-full bg-blue-100 text-blue-600 dark:bg-blue-900 dark:text-blue-400">
                         <RefreshCw className="h-5 w-5" />
                       </div>
                       <div>
