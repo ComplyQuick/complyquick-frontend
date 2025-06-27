@@ -135,6 +135,7 @@ export interface CourseCardProps {
     pocs?: POC[];
   };
   onUpdateCourse?: () => void;
+  materialUrl?: string;
 }
 
 export interface POC {
@@ -161,9 +162,11 @@ export interface CourseDetailsModalProps {
     };
     pocs?: POC[];
     tags?: string;
+    materialUrl?: string;
   };
   onUpdate?: () => void;
   hideProperties?: boolean;
+  userRole?: "superuser" | "admin" | "employee";
 }
 
 export interface CourseToggleResponse {

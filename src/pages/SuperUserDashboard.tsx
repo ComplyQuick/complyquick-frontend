@@ -367,6 +367,7 @@ const SuperUserDashboard = () => {
                           userRole="superuser"
                           learningObjectives={course.learningObjectives}
                           tags={course.tags}
+                          materialUrl={course.materialUrl}
                         />
                       ))
                   ) : (
@@ -653,6 +654,7 @@ const SuperUserDashboard = () => {
                           onUpdateCourse={() => setUpdateCourse(course)}
                           learningObjectives={course.learningObjectives}
                           tags={course.tags}
+                          materialUrl={course.materialUrl}
                         />
                         {dropdownOpen &&
                           (course.id === selectedCourse?.id ? (
