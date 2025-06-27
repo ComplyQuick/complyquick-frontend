@@ -18,6 +18,7 @@ import {
   CheckCircle,
   X,
   RefreshCw,
+  ExternalLink,
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import {
@@ -41,6 +42,7 @@ const CourseDetailsModal = ({
   course,
   onUpdate,
   hideProperties = false,
+  userRole,
 }: CourseDetailsModalProps) => {
   const [editMode, setEditMode] = React.useState(false);
   const [editProperties, setEditProperties] = React.useState(course.properties);
@@ -141,9 +143,20 @@ const CourseDetailsModal = ({
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-2xl font-bold">
-            {course.title}
-          </DialogTitle>
+          <div className="flex items-center justify-between">
+            <DialogTitle className="text-2xl font-bold">
+              {course.title}
+            </DialogTitle>
+            {userRole === "superuser" && course.materialUrl && (
+              <button
+                onClick={() => window.open(course.materialUrl, "_blank")}
+                className="p-2 rounded-full hover:bg-muted transition-colors group"
+                title="Open Course Material"
+              >
+                <ExternalLink className="h-5 w-5 text-muted-foreground group-hover:text-foreground" />
+              </button>
+            )}
+          </div>
         </DialogHeader>
         <div className="space-y-6">
           <div className="bg-muted/20 p-4 rounded-lg">

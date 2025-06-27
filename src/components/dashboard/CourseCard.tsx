@@ -48,6 +48,7 @@ const CourseCard = ({
   explanations = [],
   courseDetails,
   onUpdateCourse,
+  materialUrl,
 }: CourseCardProps) => {
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [showCardOverlay, setShowCardOverlay] = useState(false);
@@ -465,6 +466,7 @@ const CourseCard = ({
             courseDetails?.learningObjectives || learningObjectives,
           properties: courseProperties,
           tags: Array.isArray(tags) ? tags.join(", ") : tags || "",
+          materialUrl: materialUrl,
           ...courseDetails,
         }}
         onUpdate={() => {
@@ -473,6 +475,7 @@ const CourseCard = ({
           }
         }}
         hideProperties={userRole === "superuser"}
+        userRole={userRole}
       />
 
       {/* Chatbot Overlay - minimal, no extra styling */}

@@ -260,15 +260,6 @@ const Navbar = ({ userRole, onLogin }: NavbarProps) => {
                       <LogIn className="w-4 h-4" />
                       <span>Login</span>
                     </Button>
-                    {/* <Link to="/admin/login">
-                      <Button
-                        variant="outline"
-                        className="flex items-center space-x-1 hover:scale-105 transition-transform"
-                      >
-                        <LogIn className="w-4 h-4" />
-                        <span>Admin Login</span>
-                      </Button>
-                    </Link> */}
                   </div>
                 )}
               </>
@@ -334,17 +325,7 @@ const Navbar = ({ userRole, onLogin }: NavbarProps) => {
                       handleEmployeeLogin();
                     }}
                   >
-                    Employee Login
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="w-full justify-start"
-                    onClick={() => {
-                      setMobileMenuOpen(false);
-                      openLoginDialog("admin");
-                    }}
-                  >
-                    Admin Login
+                    Login
                   </Button>
                 </div>
               )}
