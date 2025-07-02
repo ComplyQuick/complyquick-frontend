@@ -39,7 +39,7 @@ export const superuserService = {
     const response = await fetch(
       `${BACKEND_URL}/api/superadmin/course/${courseId}`,
       {
-        method: "PATCH",
+        method: "PUT",
         body: formData,
       }
     );
