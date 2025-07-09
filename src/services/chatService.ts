@@ -66,18 +66,21 @@ export const chatService = {
     companyName: string,
     pocs: POC[]
   ): Promise<string> {
-    const response = await fetch("http://localhost:8000/chatbot", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        chatHistory: messages,
-        presentation_url: materialUrl,
-        company_name: companyName,
-        pocs: pocs,
-      }),
-    });
+    const response = await fetch(
+      `${import.meta.env.VITE_AI_SERVICE_URL}/chatbot`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          chatHistory: messages,
+          presentation_url: materialUrl,
+          company_name: companyName,
+          pocs: pocs,
+        }),
+      }
+    );
 
     if (!response.ok) {
       throw new Error(`API error: ${response.status} ${response.statusText}`);
