@@ -78,7 +78,7 @@ const Hero = () => {
                   <a href="#features">
                     <Button
                       variant="outline"
-                      className="w-full flex items-center justify-center px-8 py-3 text-base font-medium transition-transform hover:scale-105 border-white text-black hover:text-black dark:border-gray-300 dark:text-gray-300 dark:hover:bg-white/5"
+                      className="w-full flex items-center justify-center px-8 py-3 text-base font-medium transition-transform hover:scale-105 border-white text-black hover:text-black dark:border-gray-300 dark:text-gray-300 dark:hover:bg-gray-100 dark:hover:text-gray-900"
                     >
                       Learn More
                     </Button>

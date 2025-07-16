@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { Slide, CoursePlayerProps } from "@/types/CoursePlayer";
 import { slideService } from "@/services/slideService";
+import Navbar from "@/components/layout/Navbar";
 
 const CoursePlayer: React.FC<CoursePlayerProps> = ({
   courseId,
@@ -170,10 +171,14 @@ const CoursePlayer: React.FC<CoursePlayerProps> = ({
   }
 
   return (
-    <div className="h-screen flex flex-col bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
-      <div className="flex-1 flex flex-col max-h-screen">
-        <div className="flex-1 flex flex-col lg:flex-row gap-4 p-4">
-          <div className="flex-1 flex flex-col">
+    <div className="h-screen flex flex-col bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 overflow-hidden">
+      {/* Navbar */}
+      <Navbar userRole="employee" />
+
+      {/* Main content with fixed height to prevent scrolling */}
+      <div className="flex-1 flex flex-col pt-16 overflow-hidden">
+        <div className="flex-1 flex flex-col lg:flex-row gap-4 p-4 overflow-hidden">
+          <div className="flex-1 flex flex-col overflow-hidden">
             <div className="flex-1 bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden">
               <SlidePlayer
                 slides={slides}

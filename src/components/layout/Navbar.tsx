@@ -24,7 +24,12 @@ import { motion } from "framer-motion";
 import { useAuthStore } from "@/store/authStore";
 import { NavbarProps } from "@/types/Navbar";
 
-const Navbar = ({ userRole, onLogin }: NavbarProps) => {
+const Navbar = ({
+  userRole,
+  onLogin,
+  showBackButton,
+  onBackClick,
+}: NavbarProps) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const location = useLocation();
   const isHomePage = location.pathname === "/";
@@ -208,7 +213,7 @@ const Navbar = ({ userRole, onLogin }: NavbarProps) => {
 
   const handleEmployeeLogin = () => {
     window.location.href =
-      "https://accounts.google.com/o/oauth2/v2/auth?response_type=code&client_id=287659228942-c3ve2s9397h9mng0j65101o3ppiei565.apps.googleusercontent.com&redirect_uri=https://be.complyquickai.com/api/auth/google/callback&scope=https://www.googleapis.com/auth/userinfo.email&access_type=offline&prompt=consent";
+      "https://accounts.google.com/o/oauth2/v2/auth?response_type=code&client_id=988869669667-f62g9dtlmcmt1t5unl7cl9ni8edd0cup.apps.googleusercontent.com&redirect_uri=http://localhost:5000/api/auth/google/callback&scope=https://www.googleapis.com/auth/userinfo.email&access_type=offline&prompt=consent";
   };
 
   const handleLogout = () => {
@@ -219,9 +224,21 @@ const Navbar = ({ userRole, onLogin }: NavbarProps) => {
   return (
     <nav className="bg-white dark:bg-gray-900 shadow-sm fixed w-full top-0 z-50 animate-fade-in">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between h-16">
+        <div className="flex justify-between h-16 relative">
+          {showBackButton && onBackClick && (
+            <button
+              onClick={onBackClick}
+              className="absolute top-4 left-4 p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors z-50"
+            >
+              <ArrowLeft className="h-5 w-5 text-gray-700 dark:text-gray-300" />
+            </button>
+          )}
           <div className="flex items-center">
-            <Link to="/" className="flex-shrink-0 flex items-center">
+            <Link
+              to="/"
+              className="flex-shrink-0 flex items-center"
+              style={{ marginLeft: showBackButton ? "60px" : "0" }}
+            >
               <motion.span
                 whileHover={{ scale: 1.05 }}
                 className="text-2xl font-bold text-complybrand-800 dark:text-complybrand-300 transition-colors"

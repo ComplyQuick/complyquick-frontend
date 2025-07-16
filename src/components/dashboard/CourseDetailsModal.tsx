@@ -192,19 +192,11 @@ const CourseDetailsModal = ({
           {!hideProperties && (
             <>
               <div className="bg-muted/20 p-4 rounded-lg">
-                <div className="flex items-center justify-between mb-4">
+                <div className="mb-4">
                   <h3 className="text-lg font-semibold flex items-center gap-2">
                     <Settings className="h-5 w-5 text-complybrand-600" />
                     Course Properties
                   </h3>
-                  {!editMode && (
-                    <button
-                      onClick={() => setEditMode(true)}
-                      className="hover:bg-muted p-2 rounded-full transition"
-                    >
-                      <Pencil className="h-4 w-4 text-complybrand-600" />
-                    </button>
-                  )}
                 </div>
                 {editMode ? (
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-4">

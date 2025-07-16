@@ -15,6 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Loader2 } from "lucide-react";
 import { Slide, Explanation } from "@/types/course";
 import { adminService } from "@/services/adminService";
+import Navbar from "@/components/layout/Navbar";
 
 const AdminCoursePlayer = () => {
   const { courseId } = useParams<{ courseId: string }>();
@@ -331,10 +332,18 @@ const AdminCoursePlayer = () => {
   }
 
   return (
-    <div className="h-screen flex flex-col bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
-      <div className="flex-1 flex flex-col max-h-screen">
-        <div className="flex-1 flex flex-col lg:flex-row gap-4 p-4">
-          <div className="flex-1 flex flex-col">
+    <div className="h-screen flex flex-col bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 overflow-hidden">
+      {/* Navbar */}
+      <Navbar
+        userRole="admin"
+        showBackButton={true}
+        onBackClick={handleReturnToDashboard}
+      />
+
+      {/* Main content with fixed height to prevent scrolling */}
+      <div className="flex-1 flex flex-col pt-16 overflow-hidden">
+        <div className="flex-1 flex flex-col lg:flex-row gap-4 p-4 overflow-hidden">
+          <div className="flex-1 flex flex-col overflow-hidden">
             <div className="flex-1 bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden">
               <SlidePlayer
                 slides={slides}
@@ -358,7 +367,7 @@ const AdminCoursePlayer = () => {
             </div>
           </div>
 
-          <div className="lg:w-96 bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden h-[calc(100vh-2rem)]">
+          <div className="lg:w-96 bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden">
             <Card className="h-full flex flex-col">
               <CardHeader>
                 <CardTitle className="flex items-center justify-between">
@@ -470,18 +479,6 @@ const AdminCoursePlayer = () => {
             </Card>
           </div>
         </div>
-      </div>
-
-      {/* Return to Dashboard Button */}
-      <div className="fixed bottom-4 right-4">
-        <Button
-          variant="outline"
-          onClick={handleReturnToDashboard}
-          className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm hover:bg-white dark:hover:bg-gray-800"
-        >
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Return to Dashboard
-        </Button>
       </div>
     </div>
   );

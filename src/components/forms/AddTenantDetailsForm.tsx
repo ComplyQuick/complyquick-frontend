@@ -149,18 +149,8 @@ const AddTenantDetailsForm = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-2xl font-bold flex items-center gap-2">
+          <DialogTitle className="text-2xl font-bold">
             Organization Settings
-            {!editMode && (
-              <button
-                className="ml-2 p-1 rounded hover:bg-muted"
-                onClick={() => setEditMode(true)}
-                aria-label="Edit details"
-                type="button"
-              >
-                <Pencil className="h-5 w-5 text-gray-500" />
-              </button>
-            )}
           </DialogTitle>
           <DialogDescription>
             {editMode
@@ -172,60 +162,71 @@ const AddTenantDetailsForm = ({
         {isLoading ? (
           <div className="py-8 text-center">Loading details...</div>
         ) : !editMode ? (
-          hasDetails(existingDetails) ? (
-            <div className="space-y-8 py-4">
-              <div className="grid gap-6 md:grid-cols-2">
-                <div className="space-y-4">
-                  <h3 className="text-lg font-semibold">HR Contact</h3>
-                  <div className="h-px bg-border mb-2" />
-                  <div>
-                    <span className="font-medium">Name:</span>{" "}
-                    {existingDetails?.hrContactName || "-"}
+          <>
+            {hasDetails(existingDetails) ? (
+              <div className="space-y-8 py-4">
+                <div className="grid gap-6 md:grid-cols-2">
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-semibold">HR Contact</h3>
+                    <div className="h-px bg-border mb-2" />
+                    <div>
+                      <span className="font-medium">Name:</span>{" "}
+                      {existingDetails?.hrContactName || "-"}
+                    </div>
+                    <div>
+                      <span className="font-medium">Email:</span>{" "}
+                      {existingDetails?.hrContactEmail || "-"}
+                    </div>
+                    <div>
+                      <span className="font-medium">Phone:</span>{" "}
+                      {existingDetails?.hrContactPhone || "-"}
+                    </div>
                   </div>
-                  <div>
-                    <span className="font-medium">Email:</span>{" "}
-                    {existingDetails?.hrContactEmail || "-"}
-                  </div>
-                  <div>
-                    <span className="font-medium">Phone:</span>{" "}
-                    {existingDetails?.hrContactPhone || "-"}
-                  </div>
-                </div>
-                <div className="space-y-4">
-                  <h3 className="text-lg font-semibold">Executive Team</h3>
-                  <div className="h-px bg-border mb-2" />
-                  <div>
-                    <span className="font-medium">CEO Name:</span>{" "}
-                    {existingDetails?.ceoName || "-"}
-                  </div>
-                  <div>
-                    <span className="font-medium">CEO Email:</span>{" "}
-                    {existingDetails?.ceoEmail || "-"}
-                  </div>
-                  <div>
-                    <span className="font-medium">CEO Contact:</span>{" "}
-                    {existingDetails?.ceoContact || "-"}
-                  </div>
-                  <div>
-                    <span className="font-medium">CTO Name:</span>{" "}
-                    {existingDetails?.ctoName || "-"}
-                  </div>
-                  <div>
-                    <span className="font-medium">CTO Email:</span>{" "}
-                    {existingDetails?.ctoEmail || "-"}
-                  </div>
-                  <div>
-                    <span className="font-medium">CTO Contact:</span>{" "}
-                    {existingDetails?.ctoContact || "-"}
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-semibold">Executive Team</h3>
+                    <div className="h-px bg-border mb-2" />
+                    <div>
+                      <span className="font-medium">CEO Name:</span>{" "}
+                      {existingDetails?.ceoName || "-"}
+                    </div>
+                    <div>
+                      <span className="font-medium">CEO Email:</span>{" "}
+                      {existingDetails?.ceoEmail || "-"}
+                    </div>
+                    <div>
+                      <span className="font-medium">CEO Contact:</span>{" "}
+                      {existingDetails?.ceoContact || "-"}
+                    </div>
+                    <div>
+                      <span className="font-medium">CTO Name:</span>{" "}
+                      {existingDetails?.ctoName || "-"}
+                    </div>
+                    <div>
+                      <span className="font-medium">CTO Email:</span>{" "}
+                      {existingDetails?.ctoEmail || "-"}
+                    </div>
+                    <div>
+                      <span className="font-medium">CTO Contact:</span>{" "}
+                      {existingDetails?.ctoContact || "-"}
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          ) : (
-            <div className="py-8 text-center text-muted-foreground">
-              No details found. Click the edit icon above to add them.
-            </div>
-          )
+            ) : (
+              <div className="py-8 text-center text-muted-foreground">
+                No details found. Click the edit button below to add them.
+              </div>
+            )}
+            <DialogFooter>
+              <Button
+                onClick={() => setEditMode(true)}
+                className="bg-complybrand-600 hover:bg-complybrand-700 text-white"
+              >
+                <Pencil className="mr-2 h-4 w-4" />
+                Edit Details
+              </Button>
+            </DialogFooter>
+          </>
         ) : (
           <Form {...form}>
             <form
