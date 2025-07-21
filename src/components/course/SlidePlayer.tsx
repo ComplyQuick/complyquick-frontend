@@ -241,7 +241,6 @@ const SlidePlayer = ({
 
     // Original next slide logic for user view
     if (!canAdvance && !properties?.skippable) {
-      toast.error("Please complete the current slide before proceeding.");
       return;
     }
 
@@ -857,16 +856,10 @@ const SlidePlayer = ({
 
       <div className="p-4 border-t dark:border-gray-700 bg-white dark:bg-gray-900">
         <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center space-x-4">
-            <Avatar className="h-8 w-8">
-              <AvatarImage src="/avatars/presenter.png" />
-              <AvatarFallback>PR</AvatarFallback>
-            </Avatar>
-            <div>
-              <h3 className="text-sm font-semibold">
-                Slide {currentSlideIndex + 1} of {slideExplanations.length}
-              </h3>
-            </div>
+          <div>
+            <h3 className="text-sm font-semibold">
+              Slide {currentSlideIndex + 1} of {slideExplanations.length}
+            </h3>
           </div>
           {!isAdminView && isLastSlide && progress >= 80 && (
             <Button
