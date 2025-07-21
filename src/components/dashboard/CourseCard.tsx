@@ -211,88 +211,106 @@ const CourseCard = ({
                 </div>
               )}
             </div>
-            {/* Progress circle (right) or Certificate (right) - no progress if certificate exists */}
-            <div className="w-full px-6 flex items-center justify-end mb-2">
-              {/* Show certificate if available, otherwise show progress circle */}
-              {canDownloadCertificate && certificateUrl ? (
-                <a
-                  href={certificateUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-green-700 text-sm font-medium flex items-center gap-1 no-underline"
-                  style={{ textDecoration: "none" }}
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <Award className="h-4 w-4 text-green-600" />
-                  Certificate
-                </a>
-              ) : (
-                /* Pie chart for progress with tooltip on hover */
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <div className="cursor-pointer relative">
-                        <svg
-                          width="36"
-                          height="36"
-                          viewBox="0 0 36 36"
-                          className="block"
-                        >
-                          <circle
-                            cx="18"
-                            cy="18"
-                            r="16"
-                            fill="none"
-                            stroke="#e5e7eb"
-                            strokeWidth="4"
-                          />
-                          <circle
-                            cx="18"
-                            cy="18"
-                            r="16"
-                            fill="none"
-                            stroke="#22c55e"
-                            strokeWidth="4"
-                            strokeDasharray={Math.PI * 2 * 16}
-                            strokeDashoffset={
-                              Math.PI * 2 * 16 * (1 - (progress || 0) / 100)
-                            }
-                            strokeLinecap="round"
-                            style={{ transition: "stroke-dashoffset 0.5s" }}
-                          />
-                        </svg>
-                        {progress === 100 && (
-                          <div className="absolute inset-0 flex items-center justify-center">
-                            <Check className="h-4 w-4 text-green-500" />
+            {/* Progress circle and action buttons aligned horizontally */}
+            <div className="w-full px-6 pb-4 flex items-center justify-between">
+              {/* Progress circle (left) - hidden when Take Quiz button is active */}
+              {!(progress === 100 && onTakeQuiz && canRetakeQuiz) && (
+                <div className="flex items-center">
+                  {/* Show certificate if available, otherwise show progress circle */}
+                  {canDownloadCertificate && certificateUrl ? (
+                    <a
+                      href={certificateUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-green-700 text-sm font-medium flex items-center gap-1 no-underline"
+                      style={{ textDecoration: "none" }}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <Award className="h-4 w-4 text-green-600" />
+                      Certificate
+                    </a>
+                  ) : (
+                    /* Pie chart for progress with tooltip on hover */
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <div className="cursor-pointer relative">
+                            <svg
+                              width="36"
+                              height="36"
+                              viewBox="0 0 36 36"
+                              className="block"
+                            >
+                              <circle
+                                cx="18"
+                                cy="18"
+                                r="16"
+                                fill="none"
+                                stroke="#e5e7eb"
+                                strokeWidth="4"
+                              />
+                              <circle
+                                cx="18"
+                                cy="18"
+                                r="16"
+                                fill="none"
+                                stroke="#22c55e"
+                                strokeWidth="4"
+                                strokeDasharray={Math.PI * 2 * 16}
+                                strokeDashoffset={
+                                  Math.PI * 2 * 16 * (1 - (progress || 0) / 100)
+                                }
+                                strokeLinecap="round"
+                                style={{ transition: "stroke-dashoffset 0.5s" }}
+                              />
+                            </svg>
+                            {progress === 100 && (
+                              <div className="absolute inset-0 flex items-center justify-center">
+                                <Check className="h-4 w-4 text-green-500" />
+                              </div>
+                            )}
                           </div>
-                        )}
-                      </div>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <span className="font-semibold text-green-500">
-                        {progress}%
-                      </span>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <span className="font-semibold text-green-500">
+                            {progress}%
+                          </span>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  )}
+                </div>
               )}
-            </div>
-            {/* Buttons and actions (retain previous logic) */}
-            <div className="w-full px-6 pb-4">
-              {/* Horizontal alignment for Take Quiz and Start Again when both are shown */}
-              {progress === 100 && onTakeQuiz && canRetakeQuiz ? (
-                <div className="flex gap-3">
+
+              {/* Action buttons (right) */}
+              <div className="flex gap-3">
+                {/* Horizontal alignment for Take Quiz and Start Again when both are shown */}
+                {progress === 100 && onTakeQuiz && canRetakeQuiz ? (
+                  <>
+                    <Button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onTakeQuiz();
+                      }}
+                      className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl px-4 py-1 text-xs font-semibold transition-colors duration-300"
+                    >
+                      Take Quiz
+                    </Button>
+                    <Button
+                      className="rounded-xl px-4 py-1 text-xs font-semibold transition-colors duration-300 bg-blue-600 hover:bg-blue-700 text-white"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (onClick) {
+                          onClick();
+                        }
+                      }}
+                    >
+                      Start Again
+                    </Button>
+                  </>
+                ) : (
                   <Button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onTakeQuiz();
-                    }}
-                    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white rounded-xl px-4 py-1 text-xs font-semibold transition-colors duration-300"
-                  >
-                    Take Quiz
-                  </Button>
-                  <Button
-                    className="flex-1 rounded-xl px-4 py-1 text-xs font-semibold transition-colors duration-300 bg-blue-600 hover:bg-blue-700 text-white"
+                    className="rounded-xl px-4 py-1 text-xs font-semibold transition-colors duration-300 bg-blue-600 hover:bg-blue-700 text-white"
                     onClick={(e) => {
                       e.stopPropagation();
                       if (onClick) {
@@ -300,26 +318,14 @@ const CourseCard = ({
                       }
                     }}
                   >
-                    Start Again
+                    {progress === 100
+                      ? "Start Again"
+                      : progress > 0
+                      ? "Resume Course"
+                      : "Start Course"}
                   </Button>
-                </div>
-              ) : (
-                <Button
-                  className="rounded-xl px-4 py-1 text-xs font-semibold transition-colors duration-300 bg-blue-600 hover:bg-blue-700 text-white"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (onClick) {
-                      onClick();
-                    }
-                  }}
-                >
-                  {progress === 100
-                    ? "Start Again"
-                    : progress > 0
-                    ? "Resume Course"
-                    : "Start Course"}
-                </Button>
-              )}
+                )}
+              </div>
             </div>
           </div>
         ) : (
