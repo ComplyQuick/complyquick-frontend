@@ -213,7 +213,7 @@ const Navbar = ({
 
   const handleEmployeeLogin = () => {
     window.location.href =
-      "https://accounts.google.com/o/oauth2/v2/auth?response_type=code&client_id=988869669667-f62g9dtlmcmt1t5unl7cl9ni8edd0cup.apps.googleusercontent.com&redirect_uri=http://localhost:5000/api/auth/google/callback&scope=https://www.googleapis.com/auth/userinfo.email&access_type=offline&prompt=consent";
+      "https://accounts.google.com/o/oauth2/v2/auth?response_type=code&client_id=287659228942-c3ve2s9397h9mng0j65101o3ppiei565.apps.googleusercontent.com&redirect_uri=https://be.complyquickai.com/api/auth/google/callback&scope=https://www.googleapis.com/auth/userinfo.email&access_type=offline&prompt=consent";
   };
 
   const handleLogout = () => {
