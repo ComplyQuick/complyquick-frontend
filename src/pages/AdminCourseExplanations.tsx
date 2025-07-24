@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { useParams, useSearchParams } from "react-router-dom";
+import { useParams, useSearchParams, useNavigate } from "react-router-dom";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,7 @@ import { Explanation } from "@/types/course";
 import { adminService } from "@/services/adminService";
 
 const AdminCourseExplanations = () => {
+  const navigate = useNavigate();
   const { courseId } = useParams<{ courseId: string }>();
   const [searchParams] = useSearchParams();
   const tenantId = searchParams.get("tenantId") || "";
@@ -88,7 +89,11 @@ const AdminCourseExplanations = () => {
             <div className="flex items-center gap-2">
               <Button
                 variant="outline"
-                onClick={() => window.history.back()}
+                onClick={() => {
+                  navigate(
+                    `/admin/course/${courseId}/play?tenantId=${tenantId}&token=${token}`
+                  );
+                }}
                 className="text-sm"
               >
                 <ArrowLeft className="h-4 w-4 mr-2" />
