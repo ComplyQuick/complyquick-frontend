@@ -4,7 +4,7 @@ import SlideNavigation from "./SlideNavigation";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import GoogleSlidesViewer from "@/components/dashboard/GoogleSlidesViewer";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Menu } from "lucide-react";
@@ -19,6 +19,7 @@ import {
 import { Explanation, SlidePlayerProps } from "@/types/course";
 import { Card } from "@/components/ui/card";
 import { slideService } from "@/services/slideService";
+import { Wand2 } from "lucide-react";
 
 function parseWebVTT(vttText: string) {
   const lines = vttText.split("\n");
@@ -78,6 +79,7 @@ const SlidePlayer = ({
   const [materialUrl, setMaterialUrl] = useState<string>("");
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const progressTimerRef = useRef<number | null>(null);
+  const navigate = useNavigate();
   const { courseId } = useParams();
   const [showSkipFeedback, setShowSkipFeedback] = useState<
     null | "forward" | "backward"
@@ -94,6 +96,7 @@ const SlidePlayer = ({
   const [controlsVisible, setControlsVisible] = useState(true);
   const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const [showEnhanceDialog, setShowEnhanceDialog] = useState(false);
 
   // Fetch explanations when component mounts
   useEffect(() => {
@@ -852,6 +855,52 @@ const SlidePlayer = ({
             </div>
           </div>
         </div>
+      )}
+
+      {/* Enhance Content Button for Admins - Top Right */}
+      {isAdminView && (
+        <>
+          <button
+            className="fixed top-8 right-8 z-50 bg-gradient-to-br from-blue-600 to-indigo-600 text-white rounded-full shadow-2xl p-3 flex items-center justify-center hover:scale-110 transition-all duration-200 focus:outline-none border-4 border-white dark:border-gray-900"
+            title="Enhance Content"
+            style={{ boxShadow: "0 8px 32px 0 rgba(31, 38, 135, 0.37)" }}
+            onClick={() => setShowEnhanceDialog(true)}
+          >
+            <Wand2 className="h-7 w-7" />
+          </button>
+          <Dialog open={showEnhanceDialog} onOpenChange={setShowEnhanceDialog}>
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <Wand2 className="h-5 w-5 text-indigo-600" /> Enhance Content
+                </DialogTitle>
+              </DialogHeader>
+              <div className="flex flex-col items-center gap-4 py-4">
+                <div className="text-center">
+                  <div className="text-lg font-semibold mb-2">
+                    Ready to take your content to the next level?
+                  </div>
+                  <div className="text-sm text-muted-foreground mb-4">
+                    Use our AI-powered tool to enhance your course explanations
+                    and make your content even more engaging.
+                  </div>
+                  <Button
+                    onClick={() => {
+                      const tenantId = localStorage.getItem("tenantId") || "";
+                      const token = localStorage.getItem("token") || "";
+                      navigate(
+                        `/admin/course/${courseId}/explanations?tenantId=${tenantId}&token=${token}`
+                      );
+                    }}
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded shadow transition-all duration-200 font-semibold"
+                  >
+                    <Wand2 className="h-4 w-4" /> Go to Enhance Content
+                  </Button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
+        </>
       )}
 
       <div className="p-4 border-t dark:border-gray-700 bg-white dark:bg-gray-900">

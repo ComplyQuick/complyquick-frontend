@@ -626,7 +626,7 @@ const SuperUserDashboard = () => {
                 onCourseCreated={handleCourseCreated}
               />
               <div className="px-8">
-                <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+                <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                   {isLoading ? (
                     <div className="col-span-full text-center py-8">
                       <p className="text-muted-foreground">
